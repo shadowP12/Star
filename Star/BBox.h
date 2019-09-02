@@ -57,6 +57,15 @@ public:
 			return 2;
 		}
 	}
+	const glm::vec3 &operator[](int i) const
+	{
+		return (&mMin)[i];
+	}
+
+	glm::vec3 &operator[](int i) 
+	{
+		return (&mMin)[i];
+	}
 
 	glm::vec3 mMin;
 	glm::vec3 mMax;

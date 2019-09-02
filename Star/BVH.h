@@ -96,6 +96,8 @@ public:
 		}
 	}
 	~BVH() {}
+	bool intersect(Ray& ray, Intersection& in);
+	bool intersectP(Ray &ray);
 private:
 	std::shared_ptr<BVHBuildNode> recursiveBuild(std::vector<BVHPrimitiveInfo>& primitiveInfos, int start, int end, int* totalNodes, std::vector<std::shared_ptr<Primitive>>& orderedPrimitives)
 	{

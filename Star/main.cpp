@@ -2,6 +2,8 @@
 #define GLEW_STATIC
 #include <glew/include/GL/glew.h>
 #include <glfw/include/GLFW/glfw3.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 #include "Scene.h"
 #include "BVH.h"
 #include "Input/Input.h"
@@ -11,12 +13,28 @@
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
+glm::vec3 kLightDir = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
+glm::vec3 kLightColor = glm::vec3(0.7f, 0.6f, 0.5f);
+
 //窗口回调函数
 void cursorPosCallback(GLFWwindow * window, double xPos, double yPos);
 void keyCallback(GLFWwindow * window, int key, int scancode, int action, int mods);
 void mouseButtonCallback(GLFWwindow * window, int button, int action, int mods);
 void mouseScrollCallback(GLFWwindow * window, double xOffset, double yOffset);
 
+glm::vec3 Trace(Ray& r, std::shared_ptr<BVH> bvh)
+{
+	Intersection in;
+	bool ret = bvh->intersect(r,in);
+	if (ret)
+	{
+		glm::vec3 albedo = glm::vec3(0.9, 0.8, 0.9);
+		glm::vec3 nl = glm::dot(in.mNormal, r.mDir) < 0 ? in.mNormal : -in.mNormal;
+		return albedo * kLightColor * (fmax(0.0f, glm::dot(kLightDir, nl))) + glm::vec3(0.2,0.2,0.2);
+	}
+
+	return glm::vec3(0,0,0);
+}
 int main()
 {
 	glfwInit();
@@ -50,7 +68,7 @@ int main()
 	//
 	Input::startUp();
 	DebugDraw::startUp();
-	std::shared_ptr<Camera> camera = std::shared_ptr<Camera>(new Camera(glm::vec3(0,0,10)));
+	std::shared_ptr<Camera> camera = std::shared_ptr<Camera>(new Camera(glm::vec3(0,0,10), SCR_WIDTH, SCR_HEIGHT,45,0.1,100));
 	std::shared_ptr<Scene> scene = std::shared_ptr<Scene>(new Scene());
 	scene->load("F:/Dev/Star/Res/monkey.gltf");
 	scene->genPrimitives();
@@ -61,21 +79,27 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 		camera->tick();
+		
+		if (Input::instance().getMouseButtonDown(MouseButton::MouseLeft))
+		{
+			Ray ray;
+			camera->GenerateRay(Input::instance().getMousePosition().x, Input::instance().getMousePosition().y, ray);
+			glm::vec3 t = ray.pointAt(1000);
+			DebugDraw::instance().addLine(&ray.mOrig[0],&t[0],&glm::vec3(1,0,0)[0]);
+		}
 		Input::instance().update();
-
 		glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 		sp1->use();
 		sp1->setMat4("view",camera->getViewMatrix());
-		sp1->setMat4("projection", projection);
+		sp1->setMat4("projection", camera->getProjMatrix());
 		scene->draw(sp1);
 
 		sp2->use();
 		sp2->setMat4("view", camera->getViewMatrix());
-		sp2->setMat4("projection", projection);
-		DebugDraw::instance().draw();
+		sp2->setMat4("projection", camera->getProjMatrix());
+		//DebugDraw::instance().draw();
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -84,6 +108,33 @@ int main()
 	glfwTerminate();
 	Input::shutDown();
 	DebugDraw::shutDown();
+	uint8_t* image = new uint8_t[SCR_WIDTH * SCR_HEIGHT * 4];
+	uint8_t* data = image;
+
+	for (int y = 0; y < SCR_HEIGHT; ++y)
+	{
+		for (int x = 0; x < SCR_WIDTH; ++x)
+		{
+			glm::vec3 col(0, 0, 0);
+
+			Ray ray;
+			camera->GenerateRay(x, y, ray);
+			col = Trace(ray,bvh);
+
+			col.x = sqrtf(col.x);
+			col.y = sqrtf(col.y);
+			col.z = sqrtf(col.z);
+
+			data[0] = uint8_t(saturate(col.x) * 255.0f);
+			data[1] = uint8_t(saturate(col.y) * 255.0f);
+			data[2] = uint8_t(saturate(col.z) * 255.0f);
+			data[3] = 255;
+			data += 4;
+		}
+	}
+	stbi_flip_vertically_on_write(1);
+	stbi_write_png("output.png", SCR_WIDTH, SCR_HEIGHT, 4, image, SCR_WIDTH * 4);
+	delete image;
 	return 0;
 }
 

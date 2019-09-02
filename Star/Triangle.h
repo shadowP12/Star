@@ -1,8 +1,11 @@
 #pragma once
 #include "TriangleMesh.h"
 #include "BBox.h"
+#include "Ray.h"
+#include "Intersection.h"
 #include <memory>
 //后期将使用Point还有Normal代替glm::vec3,目的是为了更好区分运算
+//注意:现在Triangle内顶点的坐标系依旧是在模型坐标系,但是由于没有做额外的变换所以和世界坐标系是重叠的
 class Triangle
 {
 public:
@@ -10,6 +13,8 @@ public:
 	~Triangle();
 	BBox objectBound();
 	BBox worldBound();
+	bool intersect(Ray& r, Intersection& in);
+	bool intersectP(Ray& r);
 private:
 	std::shared_ptr<TriangleMesh> mMesh;
 	int mVertexIndices[3];

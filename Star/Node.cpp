@@ -81,7 +81,7 @@ glm::mat4 Node::getLocalMatrix()
 	R = glm::toMat4(mLRot);
 	T = glm::translate(glm::mat4(1.0), mLPos);
 	S = glm::scale(glm::mat4(1.0), mLScale);
-	return T * R*S;
+	return T * R * S;
 }
 
 glm::mat4 Node::getWorldMatrix()

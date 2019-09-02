@@ -10,6 +10,7 @@ namespace GMath
 {
 	static constexpr float Infinity = std::numeric_limits<float>::infinity();
 	static constexpr float NegInfinity = -Infinity;
+	static constexpr float Epsilon = std::numeric_limits<float>::epsilon();
 	static constexpr float Pi = 3.14159265358979323846;
 	static constexpr float InvPi = 1.0f / Pi;
 	static constexpr float TwoPi = 2.0f * Pi;
@@ -59,3 +60,5 @@ inline glm::vec3 TransformNormal(const glm::vec3& norm, const glm::mat4& mat)
 		mat[0][1] * x + mat[1][1] * y + mat[2][1] * z,
 		mat[0][2] * x + mat[1][2] * y + mat[2][2] * z);
 }
+
+inline float saturate(float v) { if (v < 0) return 0; if (v > 1) return 1; return v; }

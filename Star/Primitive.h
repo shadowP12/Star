@@ -1,6 +1,8 @@
 #pragma once
 #include "Triangle.h"
 #include "BBox.h"
+#include "Intersection.h"
+#include "Ray.h"
 class Primitive
 {
 public:
@@ -10,6 +12,8 @@ public:
 	}
 	~Primitive() {}
 	BBox worldBound();
+	bool intersect(Ray& r, Intersection& in);
+	bool intersectP(Ray& r);
 private:
 	std::shared_ptr<Triangle> mTriangle;
 };
