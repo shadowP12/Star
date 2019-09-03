@@ -91,7 +91,7 @@ public:
 			}
 			else
 			{
-				DebugDraw::instance().addBox(&node->bound.mMin[0], &node->bound.mMax[0],&glm::vec4(0.1,0.1,1,1)[0]);
+				//DebugDraw::instance().addBox(&node->bound.mMin[0], &node->bound.mMax[0],&glm::vec4(0.1,0.1,1,1)[0]);
 			}
 		}
 	}

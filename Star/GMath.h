@@ -62,3 +62,36 @@ inline glm::vec3 TransformNormal(const glm::vec3& norm, const glm::mat4& mat)
 }
 
 inline float saturate(float v) { if (v < 0) return 0; if (v > 1) return 1; return v; }
+
+// 将world space的点投影到屏幕
+inline glm::vec2 project(const glm::vec4& viewPort, const glm::vec3& point, const glm::mat4& viewProjectionMatrix)
+{
+	glm::vec4 clipPos;
+	clipPos = viewProjectionMatrix * glm::vec4(point.x, point.y, point.z, 1.0);
+	float ndcX = clipPos.x / clipPos.w;
+	float ndcY = clipPos.y / clipPos.w;
+	glm::vec2 out;
+	out.x = viewPort.x + (ndcX + 1.0f) * 0.5f * viewPort.z;
+	out.y = viewPort.y + (1.0f - (ndcY + 1.0f) * 0.5f) * viewPort.w;
+	return out;
+}
+
+// 将屏幕点投影到world space
+inline glm::vec3 unProject(const glm::vec4& viewPort, const glm::vec2& point, float depth,const glm::mat4& viewProjectionMatrix)
+{
+	glm::mat4 inverseViewProjectionMatrix = glm::inverse(viewProjectionMatrix);
+	glm::vec4 screen = glm::vec4((point.x - viewPort.x) / viewPort.z, ((viewPort.w - point.y) - viewPort.y) / viewPort.w, depth, 1.0f);
+
+	//映射到[-1 , 1]
+	screen.x = screen.x * 2.0f - 1.0f;
+	screen.y = screen.y * 2.0f - 1.0f;
+	screen.z = screen.z * 2.0f - 1.0f;
+
+	glm::vec4 worldPoint = inverseViewProjectionMatrix * screen;
+	worldPoint.x = worldPoint.x / worldPoint.w;
+	worldPoint.y = worldPoint.y / worldPoint.w;
+	worldPoint.z = worldPoint.z / worldPoint.w;
+
+	glm::vec3 out = glm::vec3(worldPoint.x, worldPoint.y, worldPoint.z);
+	return out;
+}

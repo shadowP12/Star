@@ -7,5 +7,5 @@ struct Intersection
 	Primitive* mPrimitive;
 	glm::vec3 mPos;
 	glm::vec3 mNormal;
-	float mDistance;
+	float mDistance = GMath::Infinity;
 };

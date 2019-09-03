@@ -60,6 +60,16 @@ void Camera::reSize(int w, int h)
 
 bool Camera::GenerateRay(float s, float t, Ray& r)
 {
+	glm::mat4 viewProjectionMatrix = mProj * mView;
+	glm::vec3 nearPoint = unProject(glm::vec4(0,0,mWidth,mHeight),glm::vec2(s,t),0.0,viewProjectionMatrix);
+	glm::vec3 farPoint = unProject(glm::vec4(0, 0, mWidth, mHeight), glm::vec2(s, t), 1.0, viewProjectionMatrix);;
+	glm::vec3 dir = farPoint - nearPoint;
+	glm::normalize(dir);
+	r.mOrig = nearPoint;
+	r.mDir = dir;
+	r.mMin = GMath::Epsilon;
+	r.mMax = GMath::Infinity;
+	/*
 	glm::vec3 ScreenCoord;
 	ScreenCoord.x = (2 * s) / (float)mWidth - 1.0;
 	ScreenCoord.y = (2 * t) / (float)mHeight - 1.0;
@@ -69,6 +79,6 @@ bool Camera::GenerateRay(float s, float t, Ray& r)
 	r.mDir = TransformVector(ScreenCoord, mScreenToWorld);
 	r.mMin = GMath::Epsilon;
 	r.mMax = GMath::Infinity;
-
+	*/
 	return true;
 }

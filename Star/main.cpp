@@ -13,7 +13,7 @@
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-glm::vec3 kLightDir = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
+glm::vec3 kLightDir = glm::normalize(glm::vec3(0.0f, 0.0f, 1.0f));
 glm::vec3 kLightColor = glm::vec3(0.7f, 0.6f, 0.5f);
 
 //窗口回调函数
@@ -28,9 +28,11 @@ glm::vec3 Trace(Ray& r, std::shared_ptr<BVH> bvh)
 	bool ret = bvh->intersect(r,in);
 	if (ret)
 	{
+		glm::vec3 target = in.mPos + in.mNormal;
+		//DebugDraw::instance().addLine(&in.mPos[0], &target[0], &glm::vec3(0, 0, 1)[0]);
 		glm::vec3 albedo = glm::vec3(0.9, 0.8, 0.9);
-		glm::vec3 nl = glm::dot(in.mNormal, r.mDir) < 0 ? in.mNormal : -in.mNormal;
-		return albedo * kLightColor * (fmax(0.0f, glm::dot(kLightDir, nl))) + glm::vec3(0.2,0.2,0.2);
+		glm::vec3 nl = in.mNormal;//glm::dot(in.mNormal, r.mDir) < 0 ? in.mNormal : -in.mNormal;
+		return albedo * kLightColor * (fmax(0.0f, glm::dot(kLightDir, nl)));// +glm::vec3(0.2, 0.2, 0.2);
 	}
 
 	return glm::vec3(0,0,0);
@@ -84,6 +86,7 @@ int main()
 		{
 			Ray ray;
 			camera->GenerateRay(Input::instance().getMousePosition().x, Input::instance().getMousePosition().y, ray);
+			Trace(ray,bvh);
 			glm::vec3 t = ray.pointAt(1000);
 			DebugDraw::instance().addLine(&ray.mOrig[0],&t[0],&glm::vec3(1,0,0)[0]);
 		}
@@ -99,7 +102,7 @@ int main()
 		sp2->use();
 		sp2->setMat4("view", camera->getViewMatrix());
 		sp2->setMat4("projection", camera->getProjMatrix());
-		//DebugDraw::instance().draw();
+		DebugDraw::instance().draw();
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

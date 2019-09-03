@@ -1,5 +1,5 @@
 #include "Triangle.h"
-
+#include "DebugDraw.h"
 
 Triangle::Triangle(std::shared_ptr<TriangleMesh> mesh, int triangleNumber, glm::mat4 objectToWorld)
 {
@@ -69,9 +69,12 @@ bool Triangle::intersect(Ray & r, Intersection & in)
 
 	if (t > r.mMin && t < r.mMax)
 	{
-		in.mDistance = t;
-		in.mPos = r.pointAt(t);
-		in.mNormal = glm::normalize(TransformNormal(glm::cross(e1, e2), mObjectToWorld));
+		if (t < in.mDistance)
+		{
+			in.mDistance = t;
+			in.mPos = r.pointAt(t);
+			in.mNormal = glm::normalize(TransformNormal(glm::cross(e1, e2), mObjectToWorld));
+		}
 		return true;
 	}
 	return false;
