@@ -12,8 +12,8 @@
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-glm::vec3 kLightDir = glm::normalize(glm::vec3(0.0f, 0.0f, 1.0f));
-glm::vec3 kLightColor = glm::vec3(0.7f, 0.6f, 0.5f);
+glm::vec3 kLightDir = glm::normalize(glm::vec3(0.0f, 0.0f, -1.0f));
+glm::vec3 kLightColor = glm::vec3(0.9f, 0.9f, 0.9f);
 
 //窗口回调函数
 void cursorPosCallback(GLFWwindow * window, double xPos, double yPos);
@@ -28,10 +28,11 @@ glm::vec3 Trace(Ray& r, std::shared_ptr<BVH> bvh)
 	if (ret)
 	{
 		glm::vec3 target = in.mPos + in.mNormal;
-		//DebugDraw::instance().addLine(&in.mPos[0], &target[0], &glm::vec3(0, 0, 1)[0]);
-		glm::vec3 albedo = glm::vec3(0.9, 0.8, 0.9);
-		glm::vec3 nl = in.mNormal;//glm::dot(in.mNormal, r.mDir) < 0 ? in.mNormal : -in.mNormal;
-		return albedo * kLightColor * (fmax(0.0f, glm::dot(kLightDir, nl)));// +glm::vec3(0.2, 0.2, 0.2);
+		glm::vec3 albedo = glm::vec3(0.9, 0.9, 0.9);
+		glm::vec3 ambient = 0.2f * kLightColor;
+		glm::vec3 n = glm::normalize(in.mNormal);
+		glm::vec3 diffuse = kLightColor * (fmax(0.0f, glm::dot(-kLightDir, n)));
+		return (ambient + diffuse) * albedo;
 	}
 
 	return glm::vec3(0,0,0);
@@ -133,7 +134,7 @@ int main()
 			data += 4;
 		}
 	}
-	stbi_flip_vertically_on_write(1);
+	stbi_flip_vertically_on_write(0);
 	stbi_write_png("output.png", SCR_WIDTH, SCR_HEIGHT, 4, image, SCR_WIDTH * 4);
 	delete image;
 	return 0;

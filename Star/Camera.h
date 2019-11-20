@@ -10,7 +10,7 @@ public:
 		mPos = pos;
 		mYaw = yaw;
 		mPitch = pitch;
-		mFront = glm::vec3(0,0,1);
+		mFront = glm::vec3(0, 0, -1);
 		mUp = glm::vec3(0.0f, 1.0f, 0.0f);
 		mNearClip = nearClip;
 		mFarClip = farClip;
@@ -33,10 +33,6 @@ public:
 	int getHeight(){ return mHeight; }
 	glm::mat4 getViewMatrix(){ return mView; }
 	glm::mat4 getProjMatrix() { return mProj; }
-	glm::vec3 WorldToRaster(const glm::vec3 pWorld) const { return TransformPoint(pWorld, mWorldToRaster); }
-	glm::vec3 RasterToWorld(const glm::vec3 pRas) const { return TransformPoint(pRas, mRasterToWorld); }
-	glm::vec3 RasterToCamera(const glm::vec3 pRas) const { return TransformPoint(pRas, mRasterToCamera); }
-	glm::vec3 CameraToRaster(const glm::vec3 pCam) const { return TransformPoint(pCam, mCameraToRaster); }
 	bool CheckRaster(const glm::vec3& pRas){ return pRas.x < float(mWidth) && pRas.x >= 0.0f && pRas.y < float(mHeight) && pRas.y >= 0.0f; }
 	
 private:
@@ -62,10 +58,4 @@ private:
 	glm::mat4 mView;
 	glm::mat4 mViewInv;
 	glm::mat4 mProj;
-	glm::mat4 mScreenToRaster;
-	glm::mat4 mRasterToCamera;
-	glm::mat4 mCameraToRaster;
-	glm::mat4 mRasterToWorld;
-	glm::mat4 mWorldToRaster;
-	glm::mat4 mScreenToWorld;
 };
