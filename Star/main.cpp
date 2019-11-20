@@ -1,9 +1,8 @@
 #include <iostream>
-#define GLEW_STATIC
-#include <glew/include/GL/glew.h>
+#include "glad/glad.h"
 #include <glfw/include/GLFW/glfw3.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+#include <stb/stb_image_write.h>
 #include "Scene.h"
 #include "BVH.h"
 #include "Input/Input.h"
@@ -57,14 +56,13 @@ int main()
 	glfwSetCursorPosCallback(window, cursorPosCallback);
 	glfwSetScrollCallback(window, mouseScrollCallback);
 
-	glewExperimental = GL_TRUE;
-	GLenum err = glewInit();
-	if (err != GLEW_OK) 
+	//初始化gl函数指针
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
-		std::cout << "Failed to initialize GLEW : " << glewGetErrorString(err) <<std::endl;
-		getchar();
-		return  -1;
+		std::cout << "Failed to initialize GLAD" << std::endl;
+		return -1;
 	}
+
 	glEnable(GL_DEPTH_TEST);
 
 	//
@@ -72,11 +70,11 @@ int main()
 	DebugDraw::startUp();
 	std::shared_ptr<Camera> camera = std::shared_ptr<Camera>(new Camera(glm::vec3(0,0,10), SCR_WIDTH, SCR_HEIGHT,45,0.1,100));
 	std::shared_ptr<Scene> scene = std::shared_ptr<Scene>(new Scene());
-	scene->load("F:/Dev/Star/Res/monkey.gltf");
+	scene->load("E:/dev/star/Res/monkey.gltf");
 	scene->genPrimitives();
 	std::shared_ptr<BVH> bvh = std::shared_ptr<BVH>(new BVH(scene->getPrimitives()));
-	std::shared_ptr<ShaderProgram> sp1 = std::shared_ptr<ShaderProgram>(new ShaderProgram("F:/Dev/Star/Res/Shader/default.vs","F:/Dev/Star/Res/Shader/default.fs"));
-	std::shared_ptr<ShaderProgram> sp2 = std::shared_ptr<ShaderProgram>(new ShaderProgram("F:/Dev/Star/Res/Shader/debug.vs", "F:/Dev/Star/Res/Shader/debug.fs"));
+	std::shared_ptr<ShaderProgram> sp1 = std::shared_ptr<ShaderProgram>(new ShaderProgram("E:/dev/star/Res/Shader/default.vs","E:/dev/star/Res/Shader/default.fs"));
+	std::shared_ptr<ShaderProgram> sp2 = std::shared_ptr<ShaderProgram>(new ShaderProgram("E:/dev/star/Res/Shader/debug.vs", "E:/dev/star/Res/Shader/debug.fs"));
 
 	while (!glfwWindowShouldClose(window))
 	{

@@ -2,8 +2,8 @@
 #include "Node.h"
 #include "GMath.h"
 #include "TriangleMesh.h"
-#define GLEW_STATIC
-#include <glew/include/GL/glew.h>
+#include "glad/glad.h"
+#include <string>
 class Model : public Node
 {
 public:

@@ -1,5 +1,5 @@
 #include "Model.h"
-
+#include <string>
 Model::Model(std::string name, std::shared_ptr<TriangleMesh> mesh)
 {
 	mName = name;

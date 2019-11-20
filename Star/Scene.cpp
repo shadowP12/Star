@@ -3,7 +3,7 @@
 #include <assert.h>
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
-#include "tiny_gltf.h"
+#include <stb/tiny_gltf.h>
 
 
 std::shared_ptr<TriangleMesh> loadMesh(tinygltf::Model& gltfModel, uint32_t idx)

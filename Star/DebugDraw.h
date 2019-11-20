@@ -1,7 +1,6 @@
 #pragma once
 #include "Module.h"
-#define GLEW_STATIC
-#include <glew/include/GL/glew.h>
+#include "glad/glad.h"
 #include "ShaderProgram.h"
 #define MAX_APG_GL_DB_LINES 819200
 class DebugDraw : public Module<DebugDraw>

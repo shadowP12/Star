@@ -4,8 +4,7 @@
 #include <sstream>
 #include <iostream>
 #include "GMath.h"
-#define GLEW_STATIC
-#include <glew/include/GL/glew.h>
+#include "glad/glad.h"
 class ShaderProgram
 {
 public:
