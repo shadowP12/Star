@@ -1,4 +1,46 @@
 #include <iostream>
+#include <CL/opencl.h>
+int main()
+{
+	cl_int status = 0;
+	size_t deviceListSize;
+	cl_uint numPlatforms;
+	cl_platform_id platform = NULL;
+
+	status = clGetPlatformIDs(0, NULL, &numPlatforms);
+	if (status != CL_SUCCESS)
+	{
+		printf("获取平台数目失败");
+		return EXIT_FAILURE;
+	}
+	
+	if (numPlatforms > 0)
+	{
+		cl_platform_id* platforms = (cl_platform_id*)malloc(numPlatforms * sizeof(cl_platform_id));
+		status = clGetPlatformIDs(numPlatforms, platforms, NULL);
+		if (status != CL_SUCCESS)
+		{
+			printf("初始化平台失败");
+			return -1;
+		}
+		for (unsigned int i = 0; i < numPlatforms; ++i)
+		{
+			char* vendor = (char*)malloc(100);
+			status = clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, sizeof(vendor), vendor, NULL);
+			platform = platforms[i];
+			if (!strcmp(vendor, "NVIDIA Corporation"))
+			{
+				break;
+			}
+		}
+		delete platforms;
+	}
+
+	return 0;
+}
+
+/*
+#include <iostream>
 #include "glad/glad.h"
 #include <glfw/include/GLFW/glfw3.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -197,3 +239,4 @@ void mouseScrollCallback(GLFWwindow * window, double xOffset, double yOffset)
 {
 	Input::instance().setMouseScrollWheel((float)yOffset);
 }
+*/
