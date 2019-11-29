@@ -93,7 +93,8 @@ bool BVH::intersectP(Ray& ray)
 		{
 			if (node->numPrimitive > 0) 
 			{
-				//节点中有图元
+				// 叶子节点
+				// 节点中有图元
 				for (unsigned int i = 0; i < node->numPrimitive; ++i) 
 				{
 					if (mPrimitives[node->primitiveOffset + i]->intersectP(ray)) 
@@ -107,6 +108,7 @@ bool BVH::intersectP(Ray& ray)
 				nodeNum = todo[--todoOffset];
 			}
 			else {
+				// 中间节点
 				if (dirIsNeg[node->axis]) 
 				{
 					//先遍历第二个子节点

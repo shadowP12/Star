@@ -128,6 +128,10 @@
   <ItemGroup>
     <ClCompile Include="BVH.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="cl\CoreCL.cpp" />
+    <ClCompile Include="cl\DataCL.cpp" />
+    <ClCompile Include="cl\RendererCL.cpp" />
+    <ClCompile Include="common\SceneData.cpp" />
     <ClCompile Include="glad\glad.c" />
     <ClCompile Include="Intersection.cpp" />
     <ClCompile Include="main.cpp" />
@@ -135,6 +139,7 @@
     <ClCompile Include="Node.cpp" />
     <ClCompile Include="Primitive.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="tools\Tools.cpp" />
     <ClCompile Include="Triangle.cpp" />
     <ClCompile Include="TriangleMesh.cpp" />
   </ItemGroup>
@@ -142,6 +147,10 @@
     <ClInclude Include="BBox.h" />
     <ClInclude Include="BVH.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="cl\CoreCL.h" />
+    <ClInclude Include="cl\DataCL.h" />
+    <ClInclude Include="cl\RendererCL.h" />
+    <ClInclude Include="common\SceneData.h" />
     <ClInclude Include="DebugDraw.h" />
     <ClInclude Include="glad\glad.h" />
     <ClInclude Include="glad\khrplatform.h" />
@@ -158,6 +167,7 @@
     <ClInclude Include="Reflection.h" />
     <ClInclude Include="Scene.h" />
     <ClInclude Include="ShaderProgram.h" />
+    <ClInclude Include="tools\Tools.h" />
     <ClInclude Include="Triangle.h" />
     <ClInclude Include="TriangleMesh.h" />
   </ItemGroup>

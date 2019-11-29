@@ -1,40 +1,57 @@
 #include <iostream>
-#include <CL/opencl.h>
+#include "glad/glad.h"
+#include <glfw/include/GLFW/glfw3.h>
+#include "cl/RendererCL.h"
+#include "Input/Input.h"
+
+const unsigned int SCR_WIDTH = 512;
+const unsigned int SCR_HEIGHT = 512;
+
+//窗口回调函数
+void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
+void mouseScrollCallback(GLFWwindow* window, double xOffset, double yOffset);
+
 int main()
 {
-	cl_int status = 0;
-	size_t deviceListSize;
-	cl_uint numPlatforms;
-	cl_platform_id platform = NULL;
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	status = clGetPlatformIDs(0, NULL, &numPlatforms);
-	if (status != CL_SUCCESS)
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Star", NULL, NULL);
+	if (window == NULL)
 	{
-		printf("获取平台数目失败");
-		return EXIT_FAILURE;
+		std::cout << "failed to create glfw window" << std::endl;
+		glfwTerminate();
+		return -1;
 	}
-	
-	if (numPlatforms > 0)
+	glfwMakeContextCurrent(window);
+	glfwSetKeyCallback(window, keyCallback);
+	glfwSetMouseButtonCallback(window, mouseButtonCallback);
+	glfwSetCursorPosCallback(window, cursorPosCallback);
+	glfwSetScrollCallback(window, mouseScrollCallback);
+
+	//初始化gl函数指针
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
-		cl_platform_id* platforms = (cl_platform_id*)malloc(numPlatforms * sizeof(cl_platform_id));
-		status = clGetPlatformIDs(numPlatforms, platforms, NULL);
-		if (status != CL_SUCCESS)
-		{
-			printf("初始化平台失败");
-			return -1;
-		}
-		for (unsigned int i = 0; i < numPlatforms; ++i)
-		{
-			char* vendor = (char*)malloc(100);
-			status = clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, sizeof(vendor), vendor, NULL);
-			platform = platforms[i];
-			if (!strcmp(vendor, "NVIDIA Corporation"))
-			{
-				break;
-			}
-		}
-		delete platforms;
+		std::cout << "failed to initialize glad" << std::endl;
+		return -1;
 	}
+
+	rc::RendererCL renderer(SCR_WIDTH, SCR_HEIGHT, window);
+
+	Input::startUp();
+	while (!glfwWindowShouldClose(window))
+	{
+		renderer.run();
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+
+	glfwTerminate();
+	Input::shutDown();
 
 	return 0;
 }
@@ -182,6 +199,8 @@ int main()
 	return 0;
 }
 
+*/
+
 void cursorPosCallback(GLFWwindow * window, double xPos, double yPos)
 {
 	Input::instance().setMousePosition(glm::vec2(xPos, yPos));
@@ -239,4 +258,3 @@ void mouseScrollCallback(GLFWwindow * window, double xOffset, double yOffset)
 {
 	Input::instance().setMouseScrollWheel((float)yOffset);
 }
-*/

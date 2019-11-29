@@ -16,6 +16,15 @@
     <Filter Include="Source\glad">
       <UniqueIdentifier>{c3ab0927-b205-4433-8c67-aed523b4d6a7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\cl">
+      <UniqueIdentifier>{50f8a7dc-31a8-477d-8420-5a6eb7d06f17}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\common">
+      <UniqueIdentifier>{3b6157e0-b2d3-4759-b89f-66bd615801c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\tools">
+      <UniqueIdentifier>{062914c2-39eb-49ee-8c67-1417aaadca9f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -50,6 +59,21 @@
     </ClCompile>
     <ClCompile Include="glad\glad.c">
       <Filter>Source\glad</Filter>
+    </ClCompile>
+    <ClCompile Include="cl\CoreCL.cpp">
+      <Filter>Source\cl</Filter>
+    </ClCompile>
+    <ClCompile Include="cl\DataCL.cpp">
+      <Filter>Source\cl</Filter>
+    </ClCompile>
+    <ClCompile Include="common\SceneData.cpp">
+      <Filter>Source\common</Filter>
+    </ClCompile>
+    <ClCompile Include="tools\Tools.cpp">
+      <Filter>Source\tools</Filter>
+    </ClCompile>
+    <ClCompile Include="cl\RendererCL.cpp">
+      <Filter>Source\cl</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -115,6 +139,21 @@
     </ClInclude>
     <ClInclude Include="glad\khrplatform.h">
       <Filter>Source\glad</Filter>
+    </ClInclude>
+    <ClInclude Include="cl\CoreCL.h">
+      <Filter>Source\cl</Filter>
+    </ClInclude>
+    <ClInclude Include="cl\DataCL.h">
+      <Filter>Source\cl</Filter>
+    </ClInclude>
+    <ClInclude Include="common\SceneData.h">
+      <Filter>Source\common</Filter>
+    </ClInclude>
+    <ClInclude Include="tools\Tools.h">
+      <Filter>Source\tools</Filter>
+    </ClInclude>
+    <ClInclude Include="cl\RendererCL.h">
+      <Filter>Source\cl</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
