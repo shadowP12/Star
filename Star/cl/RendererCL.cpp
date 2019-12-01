@@ -247,7 +247,7 @@ void RendererCL::run()
 	mGPUCamera.orig = { {mCPUCamera.position.x, mCPUCamera.position.y, mCPUCamera.position.z} };
 	mGPUCamera.front = { {mCPUCamera.front.x, mCPUCamera.front.y, mCPUCamera.front.z} };
 	mGPUCamera.up = { {mCPUCamera.up.x, mCPUCamera.up.y, mCPUCamera.up.z} };
-	mGPUCamera.params = { {45.0f, 45.0f, 0.001f, 1.0f} };
+	mGPUCamera.params = { {45.0f, 45.0f, 0.001f, 0.001f} };
 	mQueue.enqueueWriteBuffer(mCameraBuffer, CL_TRUE, 0, sizeof(Camera), &mGPUCamera);
 	//
 	
@@ -306,7 +306,7 @@ void RendererCL::updateCamera()
 	mCPUCamera.lastMousePosition = Input::instance().getMousePosition();
 	if (Input::instance().getMouseButton(MouseButton::MouseRight))
 	{
-		mCPUCamera.yaw += offset.x * 0.1f;
+		mCPUCamera.yaw += -offset.x * 0.1f;
 		mCPUCamera.pitch += -offset.y * 0.1f;
 		glm::vec3 front;
 		front.x = cos(glm::radians(mCPUCamera.yaw)) * cos(glm::radians(mCPUCamera.pitch));

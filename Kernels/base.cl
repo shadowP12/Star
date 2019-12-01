@@ -152,9 +152,45 @@ float3 trace(__constant Sphere* spheres, const Ray* camray, const int sphere_cou
 	}
 
 	return accum_color;
-}
+}	
 
-union Colour{ float c; uchar4 components;};			
+Ray genCameraRay(const int x_coord, const int y_coord, const int width, const int height, __constant Camera* cam) 
+{
+	// u v w
+	float3 w = normalize(cam->front);
+	float3 u = normalize(cross(cam->up, w));
+    float3 v = cross(w, u);
+	
+	float aspect = (float)(width) / (float)(height);
+	float theta = cam->params.x * PI / 180.0;
+    float halfHeight = tan(theta/2);
+    float halfWidth = aspect * halfHeight;
+	float3 origin = cam->orig + cam->front;
+	float3 lowerLeftCorner = origin - halfWidth*cam->params.w*u - halfHeight*cam->params.w*v - cam->params.w*w;
+	float3 horizontal = 2*halfWidth*cam->params.w*u;
+    float3 vertical = 2*halfHeight*cam->params.w*v;
+	float3 pixelPos = lowerLeftCorner + (float)x_coord*horizontal + (float)y_coord*vertical;
+	Ray ray;
+	ray.origin = cam->orig; 
+	ray.dir = normalize(pixelPos - ray.origin);
+	
+	// float fx = (float)x_coord / (float)width;
+	// float fy = (float)y_coord / (float)height;
+
+	// /* calculate aspect ratio */
+	// float aspect_ratio = (float)(width) / (float)(height);
+	// float fx2 = (fx - 0.5f) * aspect_ratio;
+	// float fy2 = fy - 0.5f;
+
+	// /* determine position of pixel on screen */
+	// float3 pixel_pos = (float3)(fx2, fy2, 0.0f);
+
+	// Ray ray;
+	// ray.origin = (float3)(0.0f, 0.1f, 2.0f); 
+	// ray.dir = normalize(pixel_pos - ray.origin);
+
+	return ray;
+}
 
 __kernel void render_kernel(__constant Sphere* spheres, const int width, const int height, const int sphere_count, 
 							__write_only image2d_t output, const int hashedframenumber, __constant Camera* cam)
@@ -167,7 +203,7 @@ __kernel void render_kernel(__constant Sphere* spheres, const int width, const i
 	unsigned int seed0 = x_coord + hashedframenumber;
 	unsigned int seed1 = y_coord + hashedframenumber;
 
-	Ray camray = createCamRay(x_coord, y_coord, width, height);
+	Ray camray = genCameraRay(x_coord, y_coord, width, height, cam);
 
 	/* add the light contribution of each sample and average over all samples*/
 	float3 finalcolor = (float3)(0.0f, 0.0f, 0.0f);
@@ -184,6 +220,4 @@ __kernel void render_kernel(__constant Sphere* spheres, const int width, const i
     uint4 value=255;
 	float4 val = (float4)(finalcolor.x, finalcolor.y, finalcolor.z, 1.0);
     write_imagef(output, coord, val);
-	/* store the pixelcolour in the output buffer */
-	//output[work_item_id] = (float3)(1.0f * 255, 1.0f * 255, 1.0f * 255);//(float3)(x_coord, y_coord, fcolour.c);
 }
