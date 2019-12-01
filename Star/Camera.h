@@ -24,17 +24,16 @@ public:
 	}
 
 	void tick();
-	
 	void reSize(int w, int h);
-
 	bool GenerateRay(float s, float t, Ray& r);
-
 	int getWidth(){ return mWidth; }
 	int getHeight(){ return mHeight; }
 	glm::mat4 getViewMatrix(){ return mView; }
 	glm::mat4 getProjMatrix() { return mProj; }
 	bool CheckRaster(const glm::vec3& pRas){ return pRas.x < float(mWidth) && pRas.x >= 0.0f && pRas.y < float(mHeight) && pRas.y >= 0.0f; }
-	
+	glm::vec3 getFront() { return mFront; }
+	glm::vec3 getUp() { return mUp; }
+	glm::vec3 getRight() { return mRight; }
 private:
 	void updateVectors();
 private:

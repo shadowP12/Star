@@ -9,12 +9,13 @@ struct Ray
 	cl_float4 dir;
 };
 
-struct Camera 
+struct Camera
 {
-	cl_float4 orig, fwd;
-	cl_float4 side, up;
-	cl_int flags;
-	cl_int pad[3];
+	cl_float3 orig;
+	cl_float3 front;
+	cl_float3 up;
+	// x : u fov, y : v fov, z : aperture , w : focusDist
+	cl_float4 params;
 };
 
 struct HitData 

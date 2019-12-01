@@ -1,6 +1,7 @@
 #include "RendererCL.h"
 #include "../tools/Tools.h"
 #include "../ShaderProgram.h"
+#include "../Input/Input.h"
 #include <vector>
 
 float QuadVertices[] = 
@@ -16,6 +17,8 @@ unsigned int Indices[] =
 	0, 1, 3,
 	1, 2, 3
 };
+
+unsigned int framenumber = 0;
 
 RAY_CL_NAMESPACE_BEGIN
 
@@ -70,7 +73,7 @@ RendererCL::RendererCL(int width, int height, GLFWwindow* win)
 
 	mProgram = cl::Program(mContext, cSource);
  
-	cl_int result = mProgram.build({ mDevice });
+	cl_int result = mProgram.build({ mDevice }, "-I E:/dev/star/Kernels");
 
 	if (result == CL_BUILD_PROGRAM_FAILURE)
 	{
@@ -125,6 +128,12 @@ RendererCL::RendererCL(int width, int height, GLFWwindow* win)
 
 	initScene();
 	initKernel();
+
+	mCPUCamera.position = glm::vec3(0,0,0);
+	mCPUCamera.front = glm::vec3(0, 0, -1);
+	mCPUCamera.up = glm::vec3(0.0f, 1.0f, 0.0f);
+	mCPUCamera.yaw = -90.0f;
+	mCPUCamera.pitch = 0.0f;
 }
 
 RendererCL::~RendererCL() 
@@ -214,13 +223,37 @@ void RendererCL::initScene()
 
 	mSpheresBuffer = cl::Buffer(mContext, CL_MEM_WRITE_ONLY, 9 * sizeof(Sphere));
 	mQueue.enqueueWriteBuffer(mSpheresBuffer, CL_TRUE, 0, 9 * sizeof(Sphere), mCpuSpheres);
+
+	mCameraBuffer = cl::Buffer(mContext, CL_MEM_WRITE_ONLY, sizeof(Camera));
 }
 inline unsigned divup(unsigned a, unsigned b)
 {
     return (a+b-1)/b;
 }
+
+unsigned int WangHash(unsigned int a) 
+{
+	a = (a ^ 61) ^ (a >> 16);
+	a = a + (a << 3);
+	a = a ^ (a >> 4);
+	a = a * 0x27d4eb2d;
+	a = a ^ (a >> 15);
+	return a;
+}
+
 void RendererCL::run()
 {
+	updateCamera();
+	mGPUCamera.orig = { {mCPUCamera.position.x, mCPUCamera.position.y, mCPUCamera.position.z} };
+	mGPUCamera.front = { {mCPUCamera.front.x, mCPUCamera.front.y, mCPUCamera.front.z} };
+	mGPUCamera.up = { {mCPUCamera.up.x, mCPUCamera.up.y, mCPUCamera.up.z} };
+	mGPUCamera.params = { {45.0f, 45.0f, 0.001f, 1.0f} };
+	mQueue.enqueueWriteBuffer(mCameraBuffer, CL_TRUE, 0, sizeof(Camera), &mGPUCamera);
+	//
+	
+	mKernel.setArg(5, WangHash(framenumber));
+	mKernel.setArg(6, mCameraBuffer);
+
 	std::size_t global_work_size = mWidth * mHeight;
 	std::size_t local_work_size = mKernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(mDevice);
 	cl_int error;
@@ -265,6 +298,29 @@ bool RendererCL::checkExtnAvailability(cl::Device device, std::string name)
 		}
 	}
 	return false;
+}
+
+void RendererCL::updateCamera()
+{
+	glm::vec2 offset = Input::instance().getMousePosition() - mCPUCamera.lastMousePosition;
+	mCPUCamera.lastMousePosition = Input::instance().getMousePosition();
+	if (Input::instance().getMouseButton(MouseButton::MouseRight))
+	{
+		mCPUCamera.yaw += offset.x * 0.1f;
+		mCPUCamera.pitch += -offset.y * 0.1f;
+		glm::vec3 front;
+		front.x = cos(glm::radians(mCPUCamera.yaw)) * cos(glm::radians(mCPUCamera.pitch));
+		front.y = sin(glm::radians(mCPUCamera.pitch));
+		front.z = sin(glm::radians(mCPUCamera.yaw)) * cos(glm::radians(mCPUCamera.pitch));
+		mCPUCamera.front = glm::normalize(front);
+		mCPUCamera.right = glm::normalize(glm::cross(mCPUCamera.front, glm::vec3(0, 1, 0)));
+		mCPUCamera.up = glm::normalize(glm::cross(mCPUCamera.right, mCPUCamera.front));
+	}
+	if (Input::instance().getMouseScrollWheel() != 0)
+	{
+		float sw = Input::instance().getMouseScrollWheel();
+		mCPUCamera.position += mCPUCamera.front * sw * 0.1f;
+	}
 }
 
 RAY_CL_NAMESPACE_END

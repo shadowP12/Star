@@ -3,7 +3,6 @@
 #include <glfw/include/GLFW/glfw3.h>
 #include "cl/RendererCL.h"
 #include "Input/Input.h"
-
 const unsigned int SCR_WIDTH = 512;
 const unsigned int SCR_HEIGHT = 512;
 
@@ -46,6 +45,7 @@ int main()
 	while (!glfwWindowShouldClose(window))
 	{
 		renderer.run();
+		Input::instance().update();
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}

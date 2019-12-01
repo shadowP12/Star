@@ -1,6 +1,8 @@
 __constant float EPSILON = 0.00003f;
 __constant float PI = 3.14159265359f;
-__constant int SAMPLES = 16;
+__constant int SAMPLES = 32;
+
+#include "types.cl"
 
 typedef struct Ray{
 	float3 origin;
@@ -102,7 +104,7 @@ float3 trace(__constant Sphere* spheres, const Ray* camray, const int sphere_cou
 	float3 accum_color = (float3)(0.0f, 0.0f, 0.0f);
 	float3 mask = (float3)(1.0f, 1.0f, 1.0f);
 
-	for (int bounces = 0; bounces < 8; bounces++){
+	for (int bounces = 0; bounces < 16; bounces++){
 
 		float t;   /* distance to intersection */
 		int hitsphere_id = 0; /* index of intersected sphere */
@@ -154,11 +156,12 @@ float3 trace(__constant Sphere* spheres, const Ray* camray, const int sphere_cou
 
 union Colour{ float c; uchar4 components;};			
 
-__kernel void render_kernel(__constant Sphere* spheres, const int width, const int height, const int sphere_count, __write_only image2d_t output, const int hashedframenumber)
+__kernel void render_kernel(__constant Sphere* spheres, const int width, const int height, const int sphere_count, 
+							__write_only image2d_t output, const int hashedframenumber, __constant Camera* cam)
 {
 	unsigned int work_item_id = get_global_id(0);	/* the unique global id of the work item for the current pixel */
-	unsigned int x_coord = work_item_id % width;			/* x-coordinate of the pixel */
-	unsigned int y_coord = work_item_id / width;			/* y-coordinate of the pixel */
+	unsigned int x_coord = get_global_id(0);			/* x-coordinate of the pixel */
+	unsigned int y_coord = get_global_id(1);			/* y-coordinate of the pixel */
 
 	/* seeds for random number generator */
 	unsigned int seed0 = x_coord + hashedframenumber;
@@ -176,16 +179,10 @@ __kernel void render_kernel(__constant Sphere* spheres, const int width, const i
 	finalcolor = (float3)(clamp(finalcolor.x, 0.0f, 1.0f), 
 		clamp(finalcolor.y, 0.0f, 1.0f), clamp(finalcolor.z, 0.0f, 1.0f));
 
-	union Colour fcolour;
-	fcolour.components = (uchar4)(	
-		(unsigned char)(finalcolor.x * 255), 
-		(unsigned char)(finalcolor.y * 255),
-		(unsigned char)(finalcolor.z * 255),
-		1);
 
 	int2 coord=(int2)(get_global_id(0), get_global_id(1));
     uint4 value=255;
-	float4 val = (float4)(1.0, 0.0, 0.0, 1.0);
+	float4 val = (float4)(finalcolor.x, finalcolor.y, finalcolor.z, 1.0);
     write_imagef(output, coord, val);
 	/* store the pixelcolour in the output buffer */
 	//output[work_item_id] = (float3)(1.0f * 255, 1.0f * 255, 1.0f * 255);//(float3)(x_coord, y_coord, fcolour.c);
