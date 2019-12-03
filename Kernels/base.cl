@@ -3,18 +3,7 @@ __constant float PI = 3.14159265359f;
 __constant int SAMPLES = 32;
 
 #include "types.cl"
-
-typedef struct Ray{
-	float3 origin;
-	float3 dir;
-} Ray;
-
-typedef struct Sphere{
-	float radius;
-	float3 pos;
-	float3 color;
-	float3 emission;
-} Sphere;
+#include "bvh.cl"
 
 static float get_random(unsigned int *seed0, unsigned int *seed1) {
 

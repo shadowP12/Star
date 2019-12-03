@@ -126,6 +126,8 @@ RendererCL::RendererCL(int width, int height, GLFWwindow* win)
 
 	mMemorys.push_back(mImage);
 
+	mSpheres = new GPUVector<Sphere>(mContext, mQueue, CL_MEM_READ_ONLY);
+
 	initScene();
 	initKernel();
 
@@ -142,6 +144,7 @@ RendererCL::~RendererCL()
 	glDeleteBuffers(1, &mVBO);
 	glDeleteBuffers(1, &mEBO);
 	glDeleteBuffers(1, &mPBO);
+	delete mSpheres;
 }
 
 void RendererCL::resize(int width, int height)
@@ -155,7 +158,7 @@ void RendererCL::initKernel()
 	unsigned int rendermode = 1;
 	mKernel = cl::Kernel(mProgram, "render_kernel");
 
-	mKernel.setArg(0, mSpheresBuffer);
+	mKernel.setArg(0, mSpheres->getBuffer());
 	mKernel.setArg(1, mWidth);
 	mKernel.setArg(2, mHeight);
 	mKernel.setArg(3, 9);
@@ -220,6 +223,16 @@ void RendererCL::initScene()
 	mCpuSpheres[8].position = float3(0.0f, 1.36f, 0.0f);
 	mCpuSpheres[8].color = float3(0.0f, 0.0f, 0.0f);
 	mCpuSpheres[8].emission = float3(9.0f, 8.0f, 6.0f);
+
+	mSpheres->pushBack(mCpuSpheres[0]);
+	mSpheres->pushBack(mCpuSpheres[1]);
+	mSpheres->pushBack(mCpuSpheres[2]);
+	mSpheres->pushBack(mCpuSpheres[3]);
+	mSpheres->pushBack(mCpuSpheres[4]);
+	mSpheres->pushBack(mCpuSpheres[5]);
+	mSpheres->pushBack(mCpuSpheres[6]);
+	mSpheres->pushBack(mCpuSpheres[7]);
+	mSpheres->pushBack(mCpuSpheres[8]);
 
 	mSpheresBuffer = cl::Buffer(mContext, CL_MEM_WRITE_ONLY, 9 * sizeof(Sphere));
 	mQueue.enqueueWriteBuffer(mSpheresBuffer, CL_TRUE, 0, 9 * sizeof(Sphere), mCpuSpheres);

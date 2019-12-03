@@ -3,6 +3,10 @@
 
 RAY_CL_NAMESPACE_BEGIN
 
+struct Core
+{
+};
+
 struct Ray
 {
 	cl_float4 orig;
@@ -18,7 +22,7 @@ struct Camera
 	cl_float4 params;
 };
 
-struct HitData 
+struct HitData
 {
 	cl_int mask, objIndex, primIndex;
 	cl_float t, u, v;
@@ -32,22 +36,78 @@ struct Environment
 	cl_int    pad[3];
 };
 
+// GPUÈÝÆ÷
 template <typename T>
-class GPUMemPool
+class GPUVector
 {
 public:
-	GPUMemPool();
-	~GPUMemPool();
+	GPUVector(const cl::Context& context, const cl::CommandQueue& queue, cl_mem_flags flags)
+		:mContext(context), mQueue(queue), mFlags(flags)
+	{
+		mSize = 0;
+		mCapacity = 16;
+		cl_int error = CL_SUCCESS;
+		mBuffer = cl::Buffer(mContext, mFlags, sizeof(T) * mCapacity, nullptr, &error);
+		if (error != CL_SUCCESS) throw std::runtime_error("cannot allocate opencl buffer!");
+	}
+
+	~GPUVector()
+	{
+	}
+	const cl::Buffer& getBuffer() const
+	{
+		return mBuffer;
+	}
+	int getSize() const
+	{
+		return mSize;
+	}
+	void pushBack(const T& e) 
+	{
+		append(&e, 1);
+	}
+	void clear()
+	{
+		mSize = 0;
+	}
 private:
-	void reserve(size_t reqCap);
+	void reserve(int reqCap)
+	{
+		if (mCapacity < reqCap)
+		{
+			cl_int error = CL_SUCCESS;
+
+			while (mCapacity < reqCap) mCapacity *= 2;
+
+			cl::Buffer newBuffer = cl::Buffer(mContext, mFlags, sizeof(T) * mCapacity, nullptr, &error);
+			if (error != CL_SUCCESS) throw std::runtime_error("cannot allocate opencl buffer!");
+
+			if (mSize != 0)
+			{
+				error = mQueue.enqueueCopyBuffer(mBuffer, newBuffer, 0, 0, sizeof(T) * mSize);
+				if (error != CL_SUCCESS) throw std::runtime_error("cannot copy opencl buffer!");
+			}
+
+			mBuffer = std::move(newBuffer);
+		}
+	}
+	void append(const T* elements, int count)
+	{
+		reserve(mSize + count);
+
+		cl_int error = CL_SUCCESS;
+		error = mQueue.enqueueWriteBuffer(mBuffer, CL_TRUE, sizeof(T) * mSize, sizeof(T) * count, elements);
+		if (error != CL_SUCCESS) throw std::runtime_error("cannot write opencl buffer!");
+
+		mSize += count;
+	}
 private:
-	cl_context mContext;
-	cl_command_queue mCommandQueue;
-	cl_mem mMem;
+	cl::Context mContext;
+	cl::CommandQueue mQueue;
+	cl::Buffer mBuffer;
 	cl_mem_flags mFlags;
-	size_t mSize;
-	size_t mCapacity;
-	size_t mMaxSize;
+	int mCapacity;
+	int mSize;
 };
 
 RAY_CL_NAMESPACE_END

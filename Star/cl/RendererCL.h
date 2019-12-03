@@ -58,6 +58,7 @@ private:
 	cl::ImageGL mImage;
 	std::vector<cl::Memory> mMemorys;
 	Sphere mCpuSpheres[9];
+	GPUVector<Sphere>* mSpheres;
 	cl::Buffer mSpheresBuffer;
 	cl::Buffer mCameraBuffer;
 	GLuint mTexture;
