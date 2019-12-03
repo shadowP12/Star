@@ -8,6 +8,7 @@
 #include <glfw/include/GLFW/glfw3.h>
 #include <glfw/include/GLFW/glfw3native.h>
 #include "../GMath.h"
+#include "../BVH.h"
 class ShaderProgram;
 
 struct CPUCamera
@@ -38,7 +39,7 @@ struct Sphere
 class RendererCL
 {
 public:
-	RendererCL(int width, int height, GLFWwindow* win);
+	RendererCL(int width, int height, GLFWwindow* win, BVH* bvh);
 	~RendererCL();
 	void resize(int width, int height);
 	void run();

@@ -3,6 +3,8 @@
 #include <glfw/include/GLFW/glfw3.h>
 #include "cl/RendererCL.h"
 #include "Input/Input.h"
+#include "Scene.h"
+#include "BVH.h"
 const unsigned int SCR_WIDTH = 512;
 const unsigned int SCR_HEIGHT = 512;
 
@@ -38,7 +40,10 @@ int main()
 		std::cout << "failed to initialize glad" << std::endl;
 		return -1;
 	}
-
+	std::shared_ptr<Scene> scene = std::shared_ptr<Scene>(new Scene());
+	scene->load("E:/dev/star/Res/monkey.gltf");
+	scene->genPrimitives();
+	BVH* bvh = new BVH(scene->getPrimitives());
 	rc::RendererCL renderer(SCR_WIDTH, SCR_HEIGHT, window);
 
 	Input::startUp();
@@ -52,7 +57,7 @@ int main()
 
 	glfwTerminate();
 	Input::shutDown();
-
+	delete bvh;
 	return 0;
 }
 

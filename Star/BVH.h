@@ -50,11 +50,8 @@ public:
 	BBox bound;
 	uint16_t numPrimitive;
 	uint8_t axis;
-	union 
-	{
-		int primitiveOffset;//指向图元
-		int secondChildOffset;
-	};
+	int primitiveOffset;//指向图元
+	int secondChildOffset;
 };
 
 class BVH
@@ -78,6 +75,7 @@ public:
 		root = recursiveBuild(primitiveInfos, 0, primitiveInfos.size(), &totalNodes, orderedPrimitives);
 		mPrimitives.swap(orderedPrimitives);
 		mNodes = new LinearBVHNode[totalNodes];
+		mNodeCount = totalNodes;
 		int offset = 0;
 		flattenBVHTree(root, &offset);
 
@@ -98,6 +96,8 @@ public:
 	~BVH() {}
 	bool intersect(Ray& ray, Intersection& in);
 	bool intersectP(Ray &ray);
+	LinearBVHNode* getNodes() {return mNodes;}
+	int getNodeCount() { return mNodeCount; }
 private:
 	std::shared_ptr<BVHBuildNode> recursiveBuild(std::vector<BVHPrimitiveInfo>& primitiveInfos, int start, int end, int* totalNodes, std::vector<std::shared_ptr<Primitive>>& orderedPrimitives)
 	{
@@ -180,4 +180,5 @@ private:
 private:
 	std::vector<std::shared_ptr<Primitive>> mPrimitives;
 	LinearBVHNode* mNodes = nullptr;
+	int mNodeCount;
 };

@@ -22,7 +22,7 @@ unsigned int framenumber = 0;
 
 RAY_CL_NAMESPACE_BEGIN
 
-RendererCL::RendererCL(int width, int height, GLFWwindow* win)
+RendererCL::RendererCL(int width, int height, GLFWwindow* win, BVH* bvh)
 {
 	resize(width, height);
 	// get platform

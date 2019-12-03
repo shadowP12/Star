@@ -29,11 +29,21 @@ struct HitData
 	cl_float2 rayID;
 };
 
-struct Environment 
+struct Environment
 {
 	cl_float4 envColAndClamp;
 	cl_uint   envMap;
 	cl_int    pad[3];
+};
+
+struct BVHNode
+{
+	cl_float3 bboxMin;
+	cl_float3 bboxMax;
+	cl_int numPrimitive;
+	cl_int axis;
+	cl_int primitiveOffset;
+	cl_int secondChildOffset;
 };
 
 // GPUÈÝÆ÷
