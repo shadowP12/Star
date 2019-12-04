@@ -16,3 +16,12 @@ typedef struct Sphere{
 	float3 color;
 	float3 emission;
 } Sphere;
+
+typedef struct BVHNode{
+	float3 bboxMin;
+	float3 bboxMax;
+	int numPrimitive;
+	int axis;
+	int primitiveOffset;
+	int secondChildOffset;
+} BVHNode;

@@ -44,6 +44,7 @@ public:
 	void resize(int width, int height);
 	void run();
 private:
+	void initBVH(BVH* bvh);
 	void initKernel();
 	void initScene();
 	bool checkExtnAvailability(cl::Device device, std::string name);
@@ -60,6 +61,7 @@ private:
 	std::vector<cl::Memory> mMemorys;
 	Sphere mCpuSpheres[9];
 	GPUVector<Sphere>* mSpheres;
+	GPUVector<BVHNode>* mBVHNodes;
 	cl::Buffer mSpheresBuffer;
 	cl::Buffer mCameraBuffer;
 	GLuint mTexture;

@@ -44,7 +44,7 @@ int main()
 	scene->load("E:/dev/star/Res/monkey.gltf");
 	scene->genPrimitives();
 	BVH* bvh = new BVH(scene->getPrimitives());
-	rc::RendererCL renderer(SCR_WIDTH, SCR_HEIGHT, window);
+	rc::RendererCL renderer(SCR_WIDTH, SCR_HEIGHT, window, bvh);
 
 	Input::startUp();
 	while (!glfwWindowShouldClose(window))

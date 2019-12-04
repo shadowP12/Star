@@ -127,7 +127,8 @@ RendererCL::RendererCL(int width, int height, GLFWwindow* win, BVH* bvh)
 	mMemorys.push_back(mImage);
 
 	mSpheres = new GPUVector<Sphere>(mContext, mQueue, CL_MEM_READ_ONLY);
-
+	mBVHNodes = new GPUVector<BVHNode>(mContext, mQueue, CL_MEM_READ_ONLY);
+	initBVH(bvh);
 	initScene();
 	initKernel();
 
@@ -145,6 +146,7 @@ RendererCL::~RendererCL()
 	glDeleteBuffers(1, &mEBO);
 	glDeleteBuffers(1, &mPBO);
 	delete mSpheres;
+	delete mBVHNodes;
 }
 
 void RendererCL::resize(int width, int height)
@@ -333,6 +335,23 @@ void RendererCL::updateCamera()
 	{
 		float sw = Input::instance().getMouseScrollWheel();
 		mCPUCamera.position += mCPUCamera.front * sw * 0.1f;
+	}
+}
+
+void RendererCL::initBVH(BVH* bvh)
+{
+	LinearBVHNode* nodes = bvh->getNodes();
+	int nodeCount = bvh->getNodeCount();
+	for (int i = 0; i < nodeCount; i++)
+	{
+		BVHNode node;
+		node.axis = nodes[i].axis;
+		node.numPrimitive = nodes[i].numPrimitive;
+		node.primitiveOffset = nodes[i].primitiveOffset;
+		node.secondChildOffset = nodes[i].secondChildOffset;
+		node.bboxMin = { {nodes[i].bound.mMin.x, nodes[i].bound.mMin.y, nodes[i].bound.mMin.z} };
+		node.bboxMax = { {nodes[i].bound.mMax.x, nodes[i].bound.mMax.y, nodes[i].bound.mMax.z} };
+		mBVHNodes->pushBack(node);
 	}
 }
 

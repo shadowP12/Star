@@ -16,3 +16,14 @@ bool intersectBBOX(const float3 o, const float3 inv_d, const float t, const floa
     return tmin <= tmax && tmin <= t && tmax > 0;
 }
 
+bool intersectBVH(const Ray* ray, const BVHNode* nodes) 
+{
+    while(1)
+    {
+        break;
+    }
+    return false;
+}
+
+
+
