@@ -166,6 +166,7 @@ void RendererCL::initKernel()
 	mKernel.setArg(3, 9);
 	mKernel.setArg(4, mImage);
 	mKernel.setArg(5, 0);
+	mKernel.setArg(7, mBVHNodes->getBuffer());
 }
 
 #define float3(x, y, z) {{x, y, z}}

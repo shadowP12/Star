@@ -117,26 +117,20 @@ float3 trace(__constant Sphere* spheres, const Ray* camray, const int sphere_cou
 		float rand2 = get_random(seed0, seed1);
 		float rand2s = sqrt(rand2);
 
-		/* create a local orthogonal coordinate frame centered at the hitpoint */
 		float3 w = normal_facing;
 		float3 axis = fabs(w.x) > 0.1f ? (float3)(0.0f, 1.0f, 0.0f) : (float3)(1.0f, 0.0f, 0.0f);
 		float3 u = normalize(cross(axis, w));
 		float3 v = cross(w, u);
 
-		/* use the coordinte frame and random numbers to compute the next ray direction */
 		float3 newdir = normalize(u * cos(rand1)*rand2s + v*sin(rand1)*rand2s + w*sqrt(1.0f - rand2));
 
-		/* add a very small offset to the hitpoint to prevent self intersection */
 		ray.origin = hitpoint + normal_facing * EPSILON;
 		ray.dir = newdir;
 
-		/* add the colour and light contributions to the accumulated colour */
 		accum_color += mask * hitsphere.emission;
 
-		/* the mask colour picks up surface colours at each bounce */
 		mask *= hitsphere.color;
 
-		/* perform cosine-weighted importance sampling for diffuse surfaces*/
 		mask *= dot(newdir, normal_facing);
 	}
 
@@ -182,19 +176,24 @@ Ray genCameraRay(const int x_coord, const int y_coord, const int width, const in
 }
 
 __kernel void render_kernel(__constant Sphere* spheres, const int width, const int height, const int sphere_count, 
-							__write_only image2d_t output, const int hashedframenumber, __constant Camera* cam)
+							__write_only image2d_t output, const int hashedframenumber, __constant Camera* cam, __constant BVHNode* nodes)
 {
-	unsigned int work_item_id = get_global_id(0);	/* the unique global id of the work item for the current pixel */
-	unsigned int x_coord = get_global_id(0);			/* x-coordinate of the pixel */
-	unsigned int y_coord = get_global_id(1);			/* y-coordinate of the pixel */
+	unsigned int x_coord = get_global_id(0);
+	unsigned int y_coord = get_global_id(1);
 
-	/* seeds for random number generator */
 	unsigned int seed0 = x_coord + hashedframenumber;
 	unsigned int seed1 = y_coord + hashedframenumber;
 
 	Ray camray = genCameraRay(x_coord, y_coord, width, height, cam);
-
-	/* add the light contribution of each sample and average over all samples*/
+	float3 finalcolor = (float3)(0.0f, 0.0f, 0.0f);
+	if(intersectBVH(&camray, nodes))
+	{
+		finalcolor = (float3)(1.0f, 1.0f, 1.0f);
+	}
+	int2 coord=(int2)(get_global_id(0), get_global_id(1));
+	float4 val = (float4)(finalcolor.x, finalcolor.y, finalcolor.z, 1.0);
+    write_imagef(output, coord, val);
+/*
 	float3 finalcolor = (float3)(0.0f, 0.0f, 0.0f);
 	float invSamples = 1.0f / SAMPLES;
 
@@ -209,4 +208,5 @@ __kernel void render_kernel(__constant Sphere* spheres, const int width, const i
     uint4 value=255;
 	float4 val = (float4)(finalcolor.x, finalcolor.y, finalcolor.z, 1.0);
     write_imagef(output, coord, val);
+*/
 }
