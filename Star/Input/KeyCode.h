@@ -1,5 +1,4 @@
-#ifndef KEY_CODE_H
-#define KEY_CODE_H
+#pragma once
 
 enum class KeyCode {
 	Key0 = 0,
@@ -46,5 +45,3 @@ enum class MouseButton {
 	MouseRight = 1,
 	MouseMiddle = 2
 };
-
-#endif

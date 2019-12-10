@@ -1,7 +1,6 @@
-#ifndef INPUT_H
-#define INPUT_H
-#include "../Module.h"
-#include "../GMath.h"
+#pragma once
+#include "../tools/Module.h"
+#include "../math/GMath.h"
 #include "KeyCode.h"
 #include <memory.h>
 
@@ -144,5 +143,3 @@ private:
 	bool mKey[(int)KeyCode::Count];
 	bool mKeyUp[(int)KeyCode::Count];
 };
-
-#endif // INPUT_H
