@@ -1,6 +1,7 @@
 #pragma once
-#include "CoreCL.h"
-#include "DataCL.h"
+#include "CLCore.h"
+#include "CLDatas.h"
+#include "CLTools.h"
 #include "../glad/glad.h"
 #include <memory>
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -23,18 +24,7 @@ struct CPUCamera
 };
 
 
-RAY_CL_NAMESPACE_BEGIN
-
-struct Sphere
-{
-	cl_float radius;
-	cl_float dummy1;
-	cl_float dummy2;
-	cl_float dummy3;
-	cl_float3 position;
-	cl_float3 color;
-	cl_float3 emission;
-};
+RC_NAMESPACE_BEGIN
 
 class RendererCL
 {

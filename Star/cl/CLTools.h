@@ -1,51 +1,7 @@
 #pragma once
-#include "CoreCL.h"
+#include "CLCore.h"
 
-RAY_CL_NAMESPACE_BEGIN
-
-struct Core
-{
-};
-
-struct Ray
-{
-	cl_float4 orig;
-	cl_float4 dir;
-};
-
-struct Camera
-{
-	cl_float3 orig;
-	cl_float3 front;
-	cl_float3 up;
-	// x : u fov, y : v fov, z : aperture , w : focusDist
-	cl_float4 params;
-};
-
-struct HitData
-{
-	cl_int mask, objIndex, primIndex;
-	cl_float t, u, v;
-	cl_float2 rayID;
-};
-
-struct Environment
-{
-	cl_float4 envColAndClamp;
-	cl_uint   envMap;
-	cl_int    pad[3];
-};
-
-struct BVHNode
-{
-	cl_float3 bboxMin;
-	cl_float3 bboxMax;
-	cl_int numPrimitive;
-	cl_int axis;
-	cl_int primitiveOffset;
-	cl_int secondChildOffset;
-};
-
+RC_NAMESPACE_BEGIN
 // GPUÈÝÆ÷
 template <typename T>
 class GPUVector
@@ -72,7 +28,7 @@ public:
 	{
 		return mSize;
 	}
-	void pushBack(const T& e) 
+	void pushBack(const T& e)
 	{
 		append(&e, 1);
 	}
@@ -120,4 +76,4 @@ private:
 	int mSize;
 };
 
-RAY_CL_NAMESPACE_END
+RC_NAMESPACE_END

@@ -2,7 +2,6 @@
 bool boxIntersect(const BBox &bounds, const Ray &ray,
 	const glm::vec3 &invDir, const unsigned int dirIsNeg[3]) 
 {
-
 	float tmin = (bounds[dirIsNeg[0]].x - ray.mOrig.x) * invDir.x;
 	float tmax = (bounds[1 - dirIsNeg[0]].x - ray.mOrig.x) * invDir.x;
 	float tymin = (bounds[dirIsNeg[1]].y - ray.mOrig.y) * invDir.y;

@@ -98,6 +98,7 @@ public:
 	bool intersectP(Ray &ray);
 	LinearBVHNode* getNodes() {return mNodes;}
 	int getNodeCount() { return mNodeCount; }
+	std::vector<std::shared_ptr<Primitive>> getPrims() { return mPrimitives; }
 private:
 	std::shared_ptr<BVHBuildNode> recursiveBuild(std::vector<BVHPrimitiveInfo>& primitiveInfos, int start, int end, int* totalNodes, std::vector<std::shared_ptr<Primitive>>& orderedPrimitives)
 	{

@@ -354,6 +354,8 @@ void RendererCL::initBVH(BVH* bvh)
 		node.bboxMax = { {nodes[i].bound.mMax.x, nodes[i].bound.mMax.y, nodes[i].bound.mMax.z} };
 		mBVHNodes->pushBack(node);
 	}
+	std::vector<std::shared_ptr<Primitive>> prims = bvh->getPrims();
+	
 }
 
 RAY_CL_NAMESPACE_END

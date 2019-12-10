@@ -60,12 +60,6 @@
     <ClCompile Include="glad\glad.c">
       <Filter>Source\glad</Filter>
     </ClCompile>
-    <ClCompile Include="cl\CoreCL.cpp">
-      <Filter>Source\cl</Filter>
-    </ClCompile>
-    <ClCompile Include="cl\DataCL.cpp">
-      <Filter>Source\cl</Filter>
-    </ClCompile>
     <ClCompile Include="common\SceneData.cpp">
       <Filter>Source\common</Filter>
     </ClCompile>
@@ -74,6 +68,9 @@
     </ClCompile>
     <ClCompile Include="cl\RendererCL.cpp">
       <Filter>Source\cl</Filter>
+    </ClCompile>
+    <ClCompile Include="common\Window.cpp">
+      <Filter>Source\common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -140,12 +137,6 @@
     <ClInclude Include="glad\khrplatform.h">
       <Filter>Source\glad</Filter>
     </ClInclude>
-    <ClInclude Include="cl\CoreCL.h">
-      <Filter>Source\cl</Filter>
-    </ClInclude>
-    <ClInclude Include="cl\DataCL.h">
-      <Filter>Source\cl</Filter>
-    </ClInclude>
     <ClInclude Include="common\SceneData.h">
       <Filter>Source\common</Filter>
     </ClInclude>
@@ -154,6 +145,21 @@
     </ClInclude>
     <ClInclude Include="cl\RendererCL.h">
       <Filter>Source\cl</Filter>
+    </ClInclude>
+    <ClInclude Include="cl\CLCore.h">
+      <Filter>Source\cl</Filter>
+    </ClInclude>
+    <ClInclude Include="cl\CLTools.h">
+      <Filter>Source\cl</Filter>
+    </ClInclude>
+    <ClInclude Include="cl\CLDatas.h">
+      <Filter>Source\cl</Filter>
+    </ClInclude>
+    <ClInclude Include="common\Window.h">
+      <Filter>Source\common</Filter>
+    </ClInclude>
+    <ClInclude Include="Base.h">
+      <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

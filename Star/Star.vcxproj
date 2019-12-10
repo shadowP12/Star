@@ -128,10 +128,9 @@
   <ItemGroup>
     <ClCompile Include="BVH.cpp" />
     <ClCompile Include="Camera.cpp" />
-    <ClCompile Include="cl\CoreCL.cpp" />
-    <ClCompile Include="cl\DataCL.cpp" />
     <ClCompile Include="cl\RendererCL.cpp" />
     <ClCompile Include="common\SceneData.cpp" />
+    <ClCompile Include="common\Window.cpp" />
     <ClCompile Include="glad\glad.c" />
     <ClCompile Include="Intersection.cpp" />
     <ClCompile Include="main.cpp" />
@@ -144,13 +143,16 @@
     <ClCompile Include="TriangleMesh.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Base.h" />
     <ClInclude Include="BBox.h" />
     <ClInclude Include="BVH.h" />
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="cl\CoreCL.h" />
-    <ClInclude Include="cl\DataCL.h" />
+    <ClInclude Include="cl\CLCore.h" />
+    <ClInclude Include="cl\CLDatas.h" />
+    <ClInclude Include="cl\CLTools.h" />
     <ClInclude Include="cl\RendererCL.h" />
     <ClInclude Include="common\SceneData.h" />
+    <ClInclude Include="common\Window.h" />
     <ClInclude Include="DebugDraw.h" />
     <ClInclude Include="glad\glad.h" />
     <ClInclude Include="glad\khrplatform.h" />
