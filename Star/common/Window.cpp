@@ -38,6 +38,50 @@ Window::~Window()
 	glfwDestroyWindow(mWin);
 }
 
+void Window::initCLCore(rc::CLCore* core)
+{
+	// get platform
+	std::vector<cl::Platform> platforms;
+	cl::Platform::get(&platforms);
+	if (platforms.empty()) throw std::runtime_error("cannot get opencl platform!");
+
+	int platformIndex = 0;
+	for (int i = 0; i < platforms.size(); i++)
+	{
+		std::string info = platforms[i].getInfo<CL_PLATFORM_VENDOR>();
+		if (info.find("NVIDIA") != std::string::npos || info.find("AMD") != std::string::npos)
+		{
+			platformIndex = (int)i;
+			break;
+		}
+	}
+
+	core->platform = platforms[platformIndex];
+
+	// get device
+	std::vector<cl::Device> devices;
+	core->platform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
+	if (devices.empty()) throw std::runtime_error("cannot get opencl device!");
+	core->device = devices[0];
+
+	// get context
+	cl_int error = CL_SUCCESS;
+	cl_context_properties cps[] = 
+	{
+			CL_GL_CONTEXT_KHR, (cl_context_properties)glfwGetWGLContext(mWin),
+			CL_WGL_HDC_KHR, (cl_context_properties)GetDC(glfwGetWin32Window(mWin)),
+			CL_CONTEXT_PLATFORM, (cl_context_properties)core->platform(),
+			0
+	};
+
+	core->context = cl::Context(devices, cps, nullptr, nullptr, &error);
+	if (error != CL_SUCCESS) throw std::runtime_error("cannot create opencl context!");
+
+	// gat command queue
+	core->queue = cl::CommandQueue(core->context, core->device, CL_QUEUE_PROFILING_ENABLE, &error);
+	if (error != CL_SUCCESS) throw std::runtime_error("cannot create opencl queue!");
+}
+
 void Window::run(std::function<void()> func)
 {
 	while (!glfwWindowShouldClose(mWin))

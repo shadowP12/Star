@@ -7,13 +7,13 @@ template <typename T>
 class GPUVector
 {
 public:
-	GPUVector(const cl::Context& context, const cl::CommandQueue& queue, cl_mem_flags flags)
-		:mContext(context), mQueue(queue), mFlags(flags)
+	GPUVector(CLCore* core, cl_mem_flags flags = CL_MEM_READ_ONLY)
+		:mCore(core), mFlags(flags)
 	{
 		mSize = 0;
 		mCapacity = 16;
 		cl_int error = CL_SUCCESS;
-		mBuffer = cl::Buffer(mContext, mFlags, sizeof(T) * mCapacity, nullptr, &error);
+		mBuffer = cl::Buffer(mCore->context, mFlags, sizeof(T) * mCapacity, nullptr, &error);
 		if (error != CL_SUCCESS) throw std::runtime_error("cannot allocate opencl buffer!");
 	}
 
@@ -45,12 +45,12 @@ private:
 
 			while (mCapacity < reqCap) mCapacity *= 2;
 
-			cl::Buffer newBuffer = cl::Buffer(mContext, mFlags, sizeof(T) * mCapacity, nullptr, &error);
+			cl::Buffer newBuffer = cl::Buffer(mCore->context, mFlags, sizeof(T) * mCapacity, nullptr, &error);
 			if (error != CL_SUCCESS) throw std::runtime_error("cannot allocate opencl buffer!");
 
 			if (mSize != 0)
 			{
-				error = mQueue.enqueueCopyBuffer(mBuffer, newBuffer, 0, 0, sizeof(T) * mSize);
+				error = mCore->queue.enqueueCopyBuffer(mBuffer, newBuffer, 0, 0, sizeof(T) * mSize);
 				if (error != CL_SUCCESS) throw std::runtime_error("cannot copy opencl buffer!");
 			}
 
@@ -62,14 +62,13 @@ private:
 		reserve(mSize + count);
 
 		cl_int error = CL_SUCCESS;
-		error = mQueue.enqueueWriteBuffer(mBuffer, CL_TRUE, sizeof(T) * mSize, sizeof(T) * count, elements);
+		error = mCore->queue.enqueueWriteBuffer(mBuffer, CL_TRUE, sizeof(T) * mSize, sizeof(T) * count, elements);
 		if (error != CL_SUCCESS) throw std::runtime_error("cannot write opencl buffer!");
 
 		mSize += count;
 	}
 private:
-	cl::Context mContext;
-	cl::CommandQueue mQueue;
+	CLCore* mCore;
 	cl::Buffer mBuffer;
 	cl_mem_flags mFlags;
 	int mCapacity;

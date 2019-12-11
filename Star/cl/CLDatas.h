@@ -3,7 +3,7 @@
 
 RC_NAMESPACE_BEGIN
 
-struct Sphere
+struct CLSphere
 {
 	cl_float radius;
 	cl_float dummy1;
@@ -14,13 +14,13 @@ struct Sphere
 	cl_float3 emission;
 };
 
-struct Ray
+struct CLRay
 {
 	cl_float4 orig;
 	cl_float4 dir;
 };
 
-struct Camera
+struct CLCamera
 {
 	cl_float3 orig;
 	cl_float3 front;
@@ -29,21 +29,21 @@ struct Camera
 	cl_float4 params;
 };
 
-struct HitData
+struct CLHitData
 {
 	cl_int mask, objIndex, primIndex;
 	cl_float t, u, v;
 	cl_float2 rayID;
 };
 
-struct Environment
+struct CLEnvironment
 {
 	cl_float4 envColAndClamp;
 	cl_uint   envMap;
 	cl_int    pad[3];
 };
 
-struct BVHNode
+struct CLBVHNode
 {
 	cl_float3 bboxMin;
 	cl_float3 bboxMax;

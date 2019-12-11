@@ -3,13 +3,9 @@
 #include "CLDatas.h"
 #include "CLTools.h"
 #include "../glad/glad.h"
-#include <memory>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#define GLFW_EXPOSE_NATIVE_WGL
-#include <glfw/include/GLFW/glfw3.h>
-#include <glfw/include/GLFW/glfw3native.h>
-#include "../GMath.h"
+#include "../math/GMath.h"
 #include "../BVH.h"
+#include <memory>
 class ShaderProgram;
 
 struct CPUCamera
@@ -23,44 +19,37 @@ struct CPUCamera
 	float pitch;
 };
 
-
 RC_NAMESPACE_BEGIN
 
 class RendererCL
 {
 public:
-	RendererCL(int width, int height, GLFWwindow* win, BVH* bvh);
+	RendererCL(int width, int height);
 	~RendererCL();
 	void resize(int width, int height);
 	void run();
+	void initCL(CLCore* core);
+	void initScene(BVH* bvh);
 private:
-	void initBVH(BVH* bvh);
-	void initKernel();
-	void initScene();
-	bool checkExtnAvailability(cl::Device device, std::string name);
 	void updateCamera();
 private:
-	cl::Platform mPlatform;
-	cl::Device mDevice;
-	cl::Context mContext;
+	CLCore* mCore;
 	cl::Program mProgram;
-	cl::CommandQueue mQueue;
 	cl::Kernel mKernel;
-	cl::BufferGL mPixelBuffer;
 	cl::ImageGL mImage;
 	std::vector<cl::Memory> mMemorys;
-	Sphere mCpuSpheres[9];
-	GPUVector<Sphere>* mSpheres;
-	GPUVector<BVHNode>* mBVHNodes;
+	CLSphere mCpuSpheres[9];
+	GPUVector<CLSphere>* mSpheres;
+	GPUVector<CLBVHNode>* mBVHNodes;
 	cl::Buffer mSpheresBuffer;
 	cl::Buffer mCameraBuffer;
 	GLuint mTexture;
-	GLuint mVAO, mVBO, mEBO, mPBO;
+	GLuint mVAO, mVBO, mEBO;
 	std::shared_ptr<ShaderProgram> mDisplayProgram;
 	int mWidth;
 	int mHeight;
-	Camera mGPUCamera;
+	CLCamera mGPUCamera;
 	CPUCamera mCPUCamera;
 };
 
-RAY_CL_NAMESPACE_END
+RC_NAMESPACE_END
