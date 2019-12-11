@@ -38,10 +38,7 @@ private:
 	cl::Kernel mKernel;
 	cl::ImageGL mImage;
 	std::vector<cl::Memory> mMemorys;
-	CLSphere mCpuSpheres[9];
-	GPUVector<CLSphere>* mSpheres;
 	GPUVector<CLBVHNode>* mBVHNodes;
-	cl::Buffer mSpheresBuffer;
 	cl::Buffer mCameraBuffer;
 	GLuint mTexture;
 	GLuint mVAO, mVBO, mEBO;

@@ -1,5 +1,5 @@
 #pragma once
-#include "GMath.h"
+#include "math/GMath.h"
 #include <vector>
 struct Vertex
 {

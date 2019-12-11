@@ -7,19 +7,17 @@ __constant int SAMPLES = 32;
 
 static float get_random(unsigned int *seed0, unsigned int *seed1) {
 
-	/* hash the seeds using bitwise AND operations and bitshifts */
 	*seed0 = 36969 * ((*seed0) & 65535) + ((*seed0) >> 16);
 	*seed1 = 18000 * ((*seed1) & 65535) + ((*seed1) >> 16);
 
 	unsigned int ires = ((*seed0) << 16) + (*seed1);
 
-	/* use union struct to convert int to float */
 	union {
 		float f;
 		unsigned int ui;
 	} res;
 
-	res.ui = (ires & 0x007fffff) | 0x40000000;  /* bitwise AND, bitwise OR */
+	res.ui = (ires & 0x007fffff) | 0x40000000; 
 	return (res.f - 2.0f) / 2.0f;
 }
 
@@ -44,7 +42,6 @@ Ray createCamRay(const int x_coord, const int y_coord, const int width, const in
 	return ray;
 }
 
-/* (__global Sphere* sphere, const Ray* ray) */
 float intersect_sphere(const Sphere* sphere, const Ray* ray) /* version using local copy of sphere */
 {
 	float3 rayToCenter = sphere->pos - ray->origin;
@@ -63,10 +60,6 @@ float intersect_sphere(const Sphere* sphere, const Ray* ray) /* version using lo
 
 bool intersect_scene(__constant Sphere* spheres, const Ray* ray, float* t, int* sphere_id, const int sphere_count)
 {
-	/* initialise t to a very large number,
-	so t will be guaranteed to be smaller
-	when a hit with the scene occurs */
-
 	float inf = 1e20f;
 	*t = inf;
 
@@ -154,59 +147,24 @@ Ray genCameraRay(const int x_coord, const int y_coord, const int width, const in
     float3 vertical = 2*halfHeight*cam->params.w*v;
 	float3 pixelPos = lowerLeftCorner + (float)x_coord*horizontal + (float)y_coord*vertical;
 	Ray ray;
-	ray.origin = cam->orig; 
+	ray.origin = cam->orig;
 	ray.dir = normalize(pixelPos - ray.origin);
 	
-	// float fx = (float)x_coord / (float)width;
-	// float fy = (float)y_coord / (float)height;
-
-	// /* calculate aspect ratio */
-	// float aspect_ratio = (float)(width) / (float)(height);
-	// float fx2 = (fx - 0.5f) * aspect_ratio;
-	// float fy2 = fy - 0.5f;
-
-	// /* determine position of pixel on screen */
-	// float3 pixel_pos = (float3)(fx2, fy2, 0.0f);
-
-	// Ray ray;
-	// ray.origin = (float3)(0.0f, 0.1f, 2.0f); 
-	// ray.dir = normalize(pixel_pos - ray.origin);
-
 	return ray;
 }
 
-__kernel void render_kernel(__constant Sphere* spheres, const int width, const int height, const int sphere_count, 
-							__write_only image2d_t output, const int hashedframenumber, __constant Camera* cam, __constant BVHNode* nodes)
+__kernel void renderKernel(const int width, const int height, __constant Camera* cam, __constant BVHNode* nodes, __write_only image2d_t output)
 {
-	unsigned int x_coord = get_global_id(0);
-	unsigned int y_coord = get_global_id(1);
+	unsigned int coordX = get_global_id(0);
+	unsigned int coordY = get_global_id(1);
 
-	unsigned int seed0 = x_coord + hashedframenumber;
-	unsigned int seed1 = y_coord + hashedframenumber;
-
-	Ray camray = genCameraRay(x_coord, y_coord, width, height, cam);
+	Ray ray = genCameraRay(coordX, coordY, width, height, cam);
 	float3 finalcolor = (float3)(0.0f, 0.0f, 0.0f);
-	if(intersectBVH(&camray, nodes))
+	if(intersectBVH(&ray, nodes))
 	{
 		finalcolor = (float3)(1.0f, 1.0f, 1.0f);
 	}
-	int2 coord=(int2)(get_global_id(0), get_global_id(1));
+	int2 coord=(int2)(coordX, coordY);
 	float4 val = (float4)(finalcolor.x, finalcolor.y, finalcolor.z, 1.0);
     write_imagef(output, coord, val);
-/*
-	float3 finalcolor = (float3)(0.0f, 0.0f, 0.0f);
-	float invSamples = 1.0f / SAMPLES;
-
-	for (int i = 0; i < SAMPLES; i++)
-		finalcolor += trace(spheres, &camray, sphere_count, &seed0, &seed1) * invSamples;
-
-	finalcolor = (float3)(clamp(finalcolor.x, 0.0f, 1.0f), 
-		clamp(finalcolor.y, 0.0f, 1.0f), clamp(finalcolor.z, 0.0f, 1.0f));
-
-
-	int2 coord=(int2)(get_global_id(0), get_global_id(1));
-    uint4 value=255;
-	float4 val = (float4)(finalcolor.x, finalcolor.y, finalcolor.z, 1.0);
-    write_imagef(output, coord, val);
-*/
 }

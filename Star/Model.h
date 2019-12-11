@@ -1,6 +1,6 @@
 #pragma once
 #include "Node.h"
-#include "GMath.h"
+#include "math/GMath.h"
 #include "TriangleMesh.h"
 #include "glad/glad.h"
 #include <string>

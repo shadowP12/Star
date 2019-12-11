@@ -32,7 +32,6 @@ RendererCL::~RendererCL()
 	glDeleteVertexArrays(1, &mVAO);
 	glDeleteBuffers(1, &mVBO);
 	glDeleteBuffers(1, &mEBO);
-	delete mSpheres;
 	delete mBVHNodes;
 }
 
@@ -98,10 +97,9 @@ void RendererCL::initCL(CLCore* core)
 	mMemorys.push_back(mImage);
 
 	// 初始化Kernel
-	mKernel = cl::Kernel(mProgram, "render_kernel");
+	mKernel = cl::Kernel(mProgram, "renderKernel");
 
 	// 初始化容器
-	mSpheres = new GPUVector<CLSphere>(mCore);
 	mBVHNodes = new GPUVector<CLBVHNode>(mCore);
 }
 
@@ -134,13 +132,10 @@ void RendererCL::initScene(BVH* bvh)
 	std::vector<std::shared_ptr<Primitive>> prims = bvh->getPrims();
 
 	// 设置GPU数据
-	mKernel.setArg(0, mSpheres->getBuffer());
-	mKernel.setArg(1, mWidth);
-	mKernel.setArg(2, mHeight);
-	mKernel.setArg(3, 9);
+	mKernel.setArg(0, mWidth);
+	mKernel.setArg(1, mHeight);
+	mKernel.setArg(3, mBVHNodes->getBuffer());
 	mKernel.setArg(4, mImage);
-	mKernel.setArg(5, 0);
-	mKernel.setArg(7, mBVHNodes->getBuffer());
 }
 
 #define float3(x, y, z) {{x, y, z}}
@@ -161,8 +156,7 @@ void RendererCL::run()
 	mCore->queue.enqueueWriteBuffer(mCameraBuffer, CL_TRUE, 0, sizeof(CLCamera), &mGPUCamera);
 	
 	// 更新GPU数据
-	mKernel.setArg(5, 0);
-	mKernel.setArg(6, mCameraBuffer);
+	mKernel.setArg(2, mCameraBuffer);
 
 	std::size_t globalWorkSize = mWidth * mHeight;
 	std::size_t localWorkSize = mKernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(mCore->device);

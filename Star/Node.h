@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include "GMath.h"
+#include "math/GMath.h"
 
 class Node : public std::enable_shared_from_this<Node>
 {
