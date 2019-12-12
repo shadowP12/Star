@@ -20,7 +20,7 @@ public:
 	~GPUVector()
 	{
 	}
-	const cl::Buffer& getBuffer() const
+	const cl::Buffer getBuffer() const
 	{
 		return mBuffer;
 	}

@@ -153,18 +153,21 @@ Ray genCameraRay(const int x_coord, const int y_coord, const int width, const in
 	return ray;
 }
 
-__kernel void renderKernel(const int width, const int height, __constant Camera* cam, __constant BVHNode* nodes, __write_only image2d_t output)
+__kernel void renderKernel(const int width, const int height, __constant Camera* cam, __global BVHNode* nodes, __write_only image2d_t output)
 {
 	unsigned int coordX = get_global_id(0);
 	unsigned int coordY = get_global_id(1);
 
 	Ray ray = genCameraRay(coordX, coordY, width, height, cam);
 	float3 finalcolor = (float3)(0.0f, 0.0f, 0.0f);
+
 	if(intersectBVH(&ray, nodes))
 	{
 		finalcolor = (float3)(1.0f, 1.0f, 1.0f);
 	}
+
 	int2 coord=(int2)(coordX, coordY);
 	float4 val = (float4)(finalcolor.x, finalcolor.y, finalcolor.z, 1.0);
     write_imagef(output, coord, val);
+
 }

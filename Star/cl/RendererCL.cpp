@@ -132,8 +132,17 @@ void RendererCL::initScene(BVH* bvh)
 	std::vector<std::shared_ptr<Primitive>> prims = bvh->getPrims();
 
 	// 设置GPU数据
+	updateCamera();
+	mGPUCamera.orig = { {mCPUCamera.position.x, mCPUCamera.position.y, mCPUCamera.position.z} };
+	mGPUCamera.front = { {mCPUCamera.front.x, mCPUCamera.front.y, mCPUCamera.front.z} };
+	mGPUCamera.up = { {mCPUCamera.up.x, mCPUCamera.up.y, mCPUCamera.up.z} };
+	mGPUCamera.params = { {45.0f, 45.0f, 0.001f, 0.001f} };
+	mCore->queue.enqueueWriteBuffer(mCameraBuffer, CL_TRUE, 0, sizeof(CLCamera), &mGPUCamera);
+
+	// 更新GPU数据
 	mKernel.setArg(0, mWidth);
 	mKernel.setArg(1, mHeight);
+	mKernel.setArg(2, mCameraBuffer);
 	mKernel.setArg(3, mBVHNodes->getBuffer());
 	mKernel.setArg(4, mImage);
 }

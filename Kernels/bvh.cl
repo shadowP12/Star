@@ -29,7 +29,7 @@ bool intersect(const float3 orig, const float3 dir, const float3 min, const floa
 	return true;
 }
 
-bool intersectBVH(const Ray* ray, __constant BVHNode* nodes) 
+bool intersectBVH(const Ray* ray, __global BVHNode* nodes) 
 {
 	float3 invDir = (float3)(1.0 / ray->dir.x, 1.0 / ray->dir.y, 1.0 / ray->dir.z);
     int dirIsNeg[3];

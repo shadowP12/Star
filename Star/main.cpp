@@ -21,9 +21,11 @@ int main()
 	scene->load("E:/dev/star/Res/monkey.gltf");
 	scene->genPrimitives();
 	BVH* bvh = new BVH(scene->getPrimitives());
+	// renderer
 	rc::RendererCL renderer(SCR_WIDTH, SCR_HEIGHT);
 	renderer.initCL(gCLCore);
 	renderer.initScene(bvh);
+
 	win.run([&renderer] {renderer.run(); });
 
 	Input::shutDown();
