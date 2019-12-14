@@ -53,4 +53,11 @@ struct CLBVHNode
 	cl_int secondChildOffset;
 };
 
+struct CLTriangle
+{
+	cl_float3 p0;
+	cl_float3 p1;
+	cl_float3 p2;
+};
+
 RC_NAMESPACE_END

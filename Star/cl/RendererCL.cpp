@@ -33,6 +33,7 @@ RendererCL::~RendererCL()
 	glDeleteBuffers(1, &mVBO);
 	glDeleteBuffers(1, &mEBO);
 	delete mBVHNodes;
+	delete mTriangles;
 }
 
 void RendererCL::resize(int width, int height)
@@ -101,6 +102,7 @@ void RendererCL::initCL(CLCore* core)
 
 	// 初始化容器
 	mBVHNodes = new GPUVector<CLBVHNode>(mCore);
+	mTriangles = new GPUVector<CLTriangle>(mCore);
 }
 
 void RendererCL::initScene(BVH* bvh)
@@ -116,8 +118,11 @@ void RendererCL::initScene(BVH* bvh)
 	// 初始化bvh节点
 	LinearBVHNode* nodes = bvh->getNodes();
 	int nodeCount = bvh->getNodeCount();
+	int max = 0;
 	for (int i = 0; i < nodeCount; i++)
 	{
+		if (max < nodes[i].primitiveOffset + nodes[i].numPrimitive)
+			max = nodes[i].primitiveOffset + nodes[i].numPrimitive;
 		CLBVHNode node;
 		node.axis = nodes[i].axis;
 		node.numPrimitive = nodes[i].numPrimitive;
@@ -130,6 +135,17 @@ void RendererCL::initScene(BVH* bvh)
 
 	// 初始化三角网格数据
 	std::vector<std::shared_ptr<Primitive>> prims = bvh->getPrims();
+	for (int i = 0; i < prims.size(); i++)
+	{
+		glm::vec3 p0, p1, p2;
+		prims[i]->getTri()->getVertexData(p0, p1, p2);
+		CLTriangle tri;
+		tri.p0 = { {p0.x, p0.y, p0.z} };
+		tri.p1 = { {p1.x, p1.y, p1.z} };
+		tri.p2 = { {p2.x, p2.y, p2.z} };
+		mTriangles->pushBack(tri);
+	}
+
 
 	// 设置GPU数据
 	updateCamera();
@@ -144,7 +160,8 @@ void RendererCL::initScene(BVH* bvh)
 	mKernel.setArg(1, mHeight);
 	mKernel.setArg(2, mCameraBuffer);
 	mKernel.setArg(3, mBVHNodes->getBuffer());
-	mKernel.setArg(4, mImage);
+	mKernel.setArg(4, mTriangles->getBuffer());
+	mKernel.setArg(5, mImage);
 }
 
 #define float3(x, y, z) {{x, y, z}}

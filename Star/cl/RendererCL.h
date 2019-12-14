@@ -39,6 +39,7 @@ private:
 	cl::ImageGL mImage;
 	std::vector<cl::Memory> mMemorys;
 	GPUVector<CLBVHNode>* mBVHNodes;
+	GPUVector<CLTriangle>* mTriangles;
 	cl::Buffer mCameraBuffer;
 	GLuint mTexture;
 	GLuint mVAO, mVBO, mEBO;

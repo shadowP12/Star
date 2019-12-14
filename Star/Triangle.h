@@ -15,6 +15,7 @@ public:
 	BBox worldBound();
 	bool intersect(Ray& r, Intersection& in);
 	bool intersectP(Ray& r);
+	void getVertexData(glm::vec3& p0, glm::vec3& p1, glm::vec3& p2);
 private:
 	std::shared_ptr<TriangleMesh> mMesh;
 	int mVertexIndices[3];

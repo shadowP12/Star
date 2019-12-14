@@ -114,3 +114,10 @@ bool Triangle::intersectP(Ray& r)
 	}
 	return false;
 }
+
+void Triangle::getVertexData(glm::vec3& p0, glm::vec3& p1, glm::vec3& p2)
+{
+	p0 = mMesh->mVertexBuffer[mVertexIndices[0]].pos;
+	p1 = mMesh->mVertexBuffer[mVertexIndices[1]].pos;
+	p2 = mMesh->mVertexBuffer[mVertexIndices[2]].pos;
+}

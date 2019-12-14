@@ -14,6 +14,7 @@ public:
 	BBox worldBound();
 	bool intersect(Ray& r, Intersection& in);
 	bool intersectP(Ray& r);
+	std::shared_ptr<Triangle> getTri() { return mTriangle; }
 private:
 	std::shared_ptr<Triangle> mTriangle;
 };
