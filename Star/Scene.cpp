@@ -3,8 +3,7 @@
 #include <assert.h>
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb/tiny_gltf.h>
-
+#include <tiny_gltf.h>
 
 std::shared_ptr<TriangleMesh> loadMesh(tinygltf::Model& gltfModel, uint32_t idx)
 {
@@ -135,7 +134,7 @@ void Scene::load(std::string file)
 
 	for (size_t i = 0; i < gltfModel.nodes.size(); i++)
 	{
-		//还有各个node之间的层次关系未实现
+		//???и???node?????ι??δ???
 		const tinygltf::Node node = gltfModel.nodes[i];
 		if (node.mesh <= -1)
 		{

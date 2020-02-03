@@ -1,7 +1,7 @@
 #include "RendererCL.h"
 #include "../tools/Tools.h"
 #include "../ShaderProgram.h"
-#include "../Input/Input.h"
+#include "../InputSystem/Input.h"
 #include <vector>
 
 float QuadVertices[] = 
@@ -46,12 +46,12 @@ void RendererCL::initCL(CLCore* core)
 {
 	mCore = core;
 	// create program
-	std::string path = "E:/dev/star/Kernels/base.cl";
+	std::string path = "Kernels/base.cl";
 	std::string source;
 	readFileData(path, source);
 	mProgram = cl::Program(mCore->context, source.c_str());
 
-	cl_int result = mProgram.build({ mCore->device }, "-I E:/dev/star/Kernels");
+	cl_int result = mProgram.build({ mCore->device }, "-I Kernels");
 
 	if (result == CL_BUILD_PROGRAM_FAILURE)
 	{
@@ -60,7 +60,7 @@ void RendererCL::initCL(CLCore* core)
 	}
 
 	// 初始化gl资源
-	mDisplayProgram = std::shared_ptr<ShaderProgram>(new ShaderProgram("E:/dev/star/Res/Shader/texture.vs", "E:/dev/star/Res/Shader/texture.fs"));
+	mDisplayProgram = std::shared_ptr<ShaderProgram>(new ShaderProgram("Res/Shader/texture.vs", "Res/Shader/texture.fs"));
 
 	glGenVertexArrays(1, &mVAO);
 	glGenBuffers(1, &mVBO);

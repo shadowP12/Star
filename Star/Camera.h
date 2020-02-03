@@ -1,6 +1,6 @@
 #pragma once
 #include "math/GMath.h"
-#include"Input/Input.h"
+#include"InputSystem/Input.h"
 #include "Ray.h"
 class Camera
 {

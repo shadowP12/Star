@@ -1,11 +1,12 @@
 #pragma once
 #include <iostream>
-#include "../glad/glad.h"
-#include "../cl/CLCore.h"
+#include <windows.h>
+#include "../GLAD/glad.h"
+#include "../CL/CLCore.h"
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_EXPOSE_NATIVE_WGL
-#include <glfw/include/GLFW/glfw3.h>
-#include <glfw/include/GLFW/glfw3native.h>
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 #include <functional>
 class Window
 {

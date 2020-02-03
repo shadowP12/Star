@@ -1,5 +1,5 @@
 #include "Window.h"
-#include "../input/Input.h"
+#include "../InputSystem/Input.h"
 //窗口回调函数
 void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);

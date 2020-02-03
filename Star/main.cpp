@@ -1,11 +1,11 @@
 #include <iostream>
-#include "glad/glad.h"
-#include <glfw/include/GLFW/glfw3.h>
-#include "cl/RendererCL.h"
+#include "GLAD/glad.h"
+#include <GLFW/glfw3.h>
+#include "CL/RendererCL.h"
 #include "Scene.h"
 #include "BVH.h"
-#include "input/Input.h"
-#include "common/Window.h"
+#include "InputSystem/Input.h"
+#include "Common/Window.h"
 const unsigned int SCR_WIDTH = 512;
 const unsigned int SCR_HEIGHT = 512;
 
@@ -18,7 +18,7 @@ int main()
 	Window win(SCR_WIDTH, SCR_HEIGHT);
 	win.initCLCore(gCLCore);
 	std::shared_ptr<Scene> scene = std::shared_ptr<Scene>(new Scene());
-	scene->load("E:/dev/star/Res/monkey.gltf");
+	scene->load("Res/monkey.gltf");
 	scene->genPrimitives();
 	BVH* bvh = new BVH(scene->getPrimitives());
 	// renderer
