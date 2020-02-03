@@ -2,6 +2,7 @@
 #include "../tools/Tools.h"
 #include "../ShaderProgram.h"
 #include "../InputSystem/Input.h"
+#include <memory>
 #include <vector>
 
 float QuadVertices[] = 
@@ -60,7 +61,7 @@ void RendererCL::initCL(CLCore* core)
 	}
 
 	// 初始化gl资源
-	mDisplayProgram = std::shared_ptr<ShaderProgram>(new ShaderProgram("Res/Shader/texture.vs", "Res/Shader/texture.fs"));
+	mDisplayProgram = std::make_shared<ShaderProgram>("Res/Shader/texture.vs", "Res/Shader/texture.fs");
 
 	glGenVertexArrays(1, &mVAO);
 	glGenBuffers(1, &mVBO);
@@ -113,7 +114,8 @@ void RendererCL::initScene(BVH* bvh)
 	mCPUCamera.up = glm::vec3(0.0f, 1.0f, 0.0f);
 	mCPUCamera.yaw = -90.0f;
 	mCPUCamera.pitch = 0.0f;
-	mCameraBuffer = cl::Buffer(mCore->context, CL_MEM_WRITE_ONLY, sizeof(CLCamera));
+	mCameraBuffer = cl::Buffer(mCore->context,
+	        CL_MEM_WRITE_ONLY, sizeof(CLCamera));
 
 	// 初始化bvh节点
 	LinearBVHNode* nodes = bvh->getNodes();
@@ -145,7 +147,6 @@ void RendererCL::initScene(BVH* bvh)
 		tri.p2 = { {p2.x, p2.y, p2.z} };
 		mTriangles->pushBack(tri);
 	}
-
 
 	// 设置GPU数据
 	updateCamera();

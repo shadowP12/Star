@@ -3,7 +3,62 @@ __constant float PI = 3.14159265359f;
 __constant int SAMPLES = 32;
 
 #include "types.cl"
-#include "bvh.cl"
+#include "tools.cl"
+
+bool intersectBVH(const Ray* ray, __global BVHNode* nodes, __global Triangle* tris)
+{
+	float3 invDir = (float3)(1.0 / ray->dir.x, 1.0 / ray->dir.y, 1.0 / ray->dir.z);
+    int dirIsNeg[3];
+    dirIsNeg[0] = invDir.x < 0 ? 1:0;
+    dirIsNeg[1] = invDir.y < 0 ? 1:0;
+    dirIsNeg[2] = invDir.z < 0 ? 1:0;
+	int todoOffset = 0;
+    int nodeNum = 0;
+	int todo[128];
+
+	while (true) 
+	{
+		BVHNode node = nodes[nodeNum];
+		if (intersectBBox(ray->origin, ray->dir, node.bboxMin, node.bboxMax))
+		{
+			if (node.numPrimitive > 0) 
+			{
+				// leaf node
+				for (int i = 0; i < node.numPrimitive; ++i)
+				{
+					int inx = node.primitiveOffset + i;
+					Triangle tri = tris[inx];
+					float3 t0 = tri.p0;
+					float3 t1 = tri.p1;
+					float3 t2 = tri.p2;
+					if (intersectTri(ray->origin, ray->dir, t0, t1, t2)) 
+					{
+						return true;
+					}
+				}
+
+				// miss
+				if (todoOffset == 0)
+					break;
+				nodeNum = todo[--todoOffset];
+			}
+			else 
+            {
+					todo[todoOffset++] = node.secondChildOffset;
+					nodeNum = nodeNum + 1;
+			}
+		}
+		else 
+		{
+			// miss
+			if (todoOffset == 0)
+				break;
+			nodeNum = todo[--todoOffset];
+		}
+	}
+	return false;
+}
+
 
 Ray genCameraRay(const int x_coord, const int y_coord, const int width, const int height, __constant Camera* cam) 
 {
@@ -25,6 +80,7 @@ Ray genCameraRay(const int x_coord, const int y_coord, const int width, const in
 	ray.origin = cam->orig;
 	ray.dir = normalize(pixelPos - ray.origin);
 	
+
 	return ray;
 }
 

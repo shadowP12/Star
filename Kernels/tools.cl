@@ -51,5 +51,3 @@ bool intersectBBox(const float3 orig, const float3 dir, const float3 min, const 
 
 	return true;
 }
-
-
