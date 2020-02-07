@@ -16,4 +16,5 @@ public:
 	uint32_t mIndexCount;
 	uint32_t mVertexCount;
 	uint32_t mTriangleCount;
+	glm::mat4 mWorldMatrix;
 };

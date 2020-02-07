@@ -19,12 +19,11 @@ unsigned int Indices[] =
 	1, 2, 3
 };
 
-unsigned int framenumber = 0;
-
 RC_NAMESPACE_BEGIN
 
 RendererCL::RendererCL(int width, int height)
 {
+    mFrameCount = 0;
 	resize(width, height);
 }
 
@@ -51,13 +50,13 @@ void RendererCL::initCL(CLCore* core)
 	std::string source;
 	readFileData(path, source);
 	mProgram = cl::Program(mCore->context, source.c_str());
-
 	cl_int result = mProgram.build({ mCore->device }, "-I Kernels");
+
+    std::string buildLog = mProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(mCore->device);
 
 	if (result == CL_BUILD_PROGRAM_FAILURE)
 	{
-		std::string buildLog = mProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(mCore->device);
-		printf("%s\n", buildLog.c_str());
+        printf("%s\n", buildLog.c_str());
 	}
 
 	// 初始化gl资源
@@ -114,10 +113,10 @@ void RendererCL::initScene(BVH* bvh)
 	mCPUCamera.up = glm::vec3(0.0f, 1.0f, 0.0f);
 	mCPUCamera.yaw = -90.0f;
 	mCPUCamera.pitch = 0.0f;
-	mCameraBuffer = cl::Buffer(mCore->context,
-	        CL_MEM_WRITE_ONLY, sizeof(CLCamera));
+	mCameraBuffer = cl::Buffer(mCore->context,CL_MEM_WRITE_ONLY, sizeof(CLCamera));
 
 	// 初始化bvh节点
+
 	LinearBVHNode* nodes = bvh->getNodes();
 	int nodeCount = bvh->getNodeCount();
 	int max = 0;
@@ -140,11 +139,30 @@ void RendererCL::initScene(BVH* bvh)
 	for (int i = 0; i < prims.size(); i++)
 	{
 		glm::vec3 p0, p1, p2;
-		prims[i]->getTri()->getVertexData(p0, p1, p2);
+        glm::vec3 n0, n1, n2;
+        glm::vec2 t0, t1, t2;
+		prims[i]->getTri()->getPositionData(p0, p1, p2);
+        prims[i]->getTri()->getNormalData(n0, n1, n2);
+        prims[i]->getTri()->getUVData(t0, t1, t2);
+
+		CLVertex v0, v1, v2;
+		v0.position = { {p0.x, p0.y, p0.z} };
+		v0.normal = { {n0.x, n0.y, n0.z} };
+		v0.texcoord = { {t0.x, t0.y, 0.0} };
+
+        v1.position = { {p1.x, p1.y, p1.z} };
+        v1.normal = { {n1.x, n1.y, n1.z} };
+        v1.texcoord = { {t1.x, t1.y, 0.0} };
+
+        v2.position = { {p2.x, p2.y, p2.z} };
+        v2.normal = { {n2.x, n2.y, n2.z} };
+        v2.texcoord = { {t2.x, t2.y, 0.0} };
+
 		CLTriangle tri;
-		tri.p0 = { {p0.x, p0.y, p0.z} };
-		tri.p1 = { {p1.x, p1.y, p1.z} };
-		tri.p2 = { {p2.x, p2.y, p2.z} };
+		tri.v0 = v0;
+		tri.v1 = v1;
+		tri.v2 = v2;
+		tri.mat = 0;
 		mTriangles->pushBack(tri);
 	}
 
@@ -162,7 +180,7 @@ void RendererCL::initScene(BVH* bvh)
 	mKernel.setArg(2, mCameraBuffer);
 	mKernel.setArg(3, mBVHNodes->getBuffer());
 	mKernel.setArg(4, mTriangles->getBuffer());
-	mKernel.setArg(5, mImage);
+	mKernel.setArg(6, mImage);
 }
 
 #define float3(x, y, z) {{x, y, z}}
@@ -184,6 +202,7 @@ void RendererCL::run()
 	
 	// 更新GPU数据
 	mKernel.setArg(2, mCameraBuffer);
+    mKernel.setArg(5, mFrameCount);
 
 	std::size_t globalWorkSize = mWidth * mHeight;
 	std::size_t localWorkSize = mKernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(mCore->device);
@@ -212,6 +231,8 @@ void RendererCL::run()
 	glBindTexture(GL_TEXTURE_2D, mTexture);
 	glBindVertexArray(mVAO);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    mFrameCount++;
 }
 
 void RendererCL::updateCamera()

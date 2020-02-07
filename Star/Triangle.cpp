@@ -4,7 +4,7 @@
 Triangle::Triangle(std::shared_ptr<TriangleMesh> mesh, int triangleNumber, glm::mat4 objectToWorld)
 {
 	mMesh = mesh;
-	mObjectToWorld = objectToWorld;
+	mObjectToWorld = mMesh->mWorldMatrix;
 	mWorldToObject = glm::inverse(objectToWorld);
 	uint32_t* vertexIndices = &(mMesh->mIndexBuffer[triangleNumber * 3]);
 	mVertexIndices[0] = vertexIndices[0];
@@ -115,9 +115,25 @@ bool Triangle::intersectP(Ray& r)
 	return false;
 }
 
-void Triangle::getVertexData(glm::vec3& p0, glm::vec3& p1, glm::vec3& p2)
+void Triangle::getPositionData(glm::vec3& p0, glm::vec3& p1, glm::vec3& p2)
 {
-	p0 = mMesh->mVertexBuffer[mVertexIndices[0]].pos;
-	p1 = mMesh->mVertexBuffer[mVertexIndices[1]].pos;
-	p2 = mMesh->mVertexBuffer[mVertexIndices[2]].pos;
+	p0 = TransformPoint(mMesh->mVertexBuffer[mVertexIndices[0]].pos, mMesh->mWorldMatrix);
+	p1 = TransformPoint(mMesh->mVertexBuffer[mVertexIndices[1]].pos, mMesh->mWorldMatrix);
+	p2 = TransformPoint(mMesh->mVertexBuffer[mVertexIndices[2]].pos, mMesh->mWorldMatrix);
 }
+
+void Triangle::getNormalData(glm::vec3& n0, glm::vec3& n1, glm::vec3& n2)
+{
+    n0 = TransformNormal(mMesh->mVertexBuffer[mVertexIndices[0]].normal, mMesh->mWorldMatrix);
+    n1 = TransformNormal(mMesh->mVertexBuffer[mVertexIndices[1]].normal, mMesh->mWorldMatrix);
+    n2 = TransformNormal(mMesh->mVertexBuffer[mVertexIndices[2]].normal, mMesh->mWorldMatrix);
+}
+
+void Triangle::getUVData(glm::vec2 &t0, glm::vec2 &t1, glm::vec2 &t2)
+{
+    t0 = mMesh->mVertexBuffer[mVertexIndices[0]].uv;
+    t1 = mMesh->mVertexBuffer[mVertexIndices[1]].uv;
+    t2 = mMesh->mVertexBuffer[mVertexIndices[2]].uv;
+}
+
+

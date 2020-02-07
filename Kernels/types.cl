@@ -26,8 +26,31 @@ typedef struct BVHNode{
 	int secondChildOffset;
 } BVHNode;
 
+typedef struct Vertex
+{
+    float3 position;
+    float3 normal;
+    float3 texcoord;
+} Vertex;
+
 typedef struct Triangle{
-	float3 p0;
-	float3 p1;
-	float3 p2;
+	Vertex v0;
+	Vertex v1;
+	Vertex v2;
+	int mat;
 } Triangle;
+
+typedef struct IntersectData {
+    bool hit;
+    Ray ray;
+    float t;
+    float3 pos;
+    float3 texcoord;
+    float3 normal;
+    const __global Triangle* object;
+} IntersectData;
+
+typedef struct Scene {
+    __global Triangle* triangles;
+    __global BVHNode* nodes;
+} Scene;

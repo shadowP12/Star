@@ -53,11 +53,20 @@ struct CLBVHNode
 	cl_int secondChildOffset;
 };
 
+struct CLVertex
+{
+    cl_float3 position;
+    cl_float3 normal;
+    cl_float3 texcoord;
+};
+
 struct CLTriangle
 {
-	cl_float3 p0;
-	cl_float3 p1;
-	cl_float3 p2;
+    CLVertex v0;
+    CLVertex v1;
+    CLVertex v2;
+    cl_int mat;
+    cl_int pad[3];
 };
 
 RC_NAMESPACE_END

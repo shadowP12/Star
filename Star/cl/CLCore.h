@@ -1,5 +1,5 @@
 #pragma once
-#define __CL_ENABLE_EXCEPTIONS
+//#define __CL_ENABLE_EXCEPTIONS
 #include <CL/cl.hpp>
 
 #define RC_NAMESPACE_BEGIN namespace rc {

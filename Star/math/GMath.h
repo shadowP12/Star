@@ -17,8 +17,12 @@ namespace GMath
 	static constexpr float InvTwoPi = 1.0f / TwoPi;
 };
 
-inline glm::vec3 TransformPoint(const glm::vec3& point, const glm::mat4& mat) 
+inline glm::vec3 TransformPoint(const glm::vec3& point, const glm::mat4& inMat)
 {
+//    glm::vec4 p = glm::vec4(point.x, point.y, point.z, 1.0f);
+//    glm::vec4 r = inMat * p;
+//    return glm::vec3(r.x, r.y, r.z);
+    glm::mat4 mat = glm::transpose(inMat);
 	float x = point.x, y = point.y, z = point.z;
 	float xp = mat[0][0] * x + mat[0][1] * y + mat[0][2] * z + mat[0][3];
 	float yp = mat[1][0] * x + mat[1][1] * y + mat[1][2] * z + mat[1][3];
@@ -32,8 +36,9 @@ inline glm::vec3 TransformPoint(const glm::vec3& point, const glm::mat4& mat)
 		return glm::vec3(xp, yp, zp) / wp;
 }
 
-inline glm::vec4 TransformPoint(const glm::vec4& point, const glm::mat4& mat) 
+inline glm::vec4 TransformPoint(const glm::vec4& point, const glm::mat4& inMat)
 {
+    glm::mat4 mat = glm::transpose(inMat);
 	float x = point.x, y = point.y, z = point.z, w = point.w;
 	float xp = mat[0][0] * x + mat[0][1] * y + mat[0][2] * z + mat[0][3] * w;
 	float yp = mat[1][0] * x + mat[1][1] * y + mat[1][2] * z + mat[1][3] * w;
@@ -43,8 +48,9 @@ inline glm::vec4 TransformPoint(const glm::vec4& point, const glm::mat4& mat)
 	return glm::vec4(xp, yp, zp, wp);
 }
 
-inline glm::vec3 TransformVector(const glm::vec3& vec, const glm::mat4& mat)
+inline glm::vec3 TransformVector(const glm::vec3& vec, const glm::mat4& inMat)
 {
+    glm::mat4 mat = glm::transpose(inMat);
 	float x = vec.x, y = vec.y, z = vec.z;
 
 	return glm::vec3(mat[0][0] * x + mat[0][1] * y + mat[0][2] * z,
@@ -52,8 +58,9 @@ inline glm::vec3 TransformVector(const glm::vec3& vec, const glm::mat4& mat)
 		mat[2][0] * x + mat[2][1] * y + mat[2][2] * z);
 }
 
-inline glm::vec3 TransformNormal(const glm::vec3& norm, const glm::mat4& mat) 
+inline glm::vec3 TransformNormal(const glm::vec3& norm, const glm::mat4& inMat)
 {
+    glm::mat4 mat = glm::transpose(inMat);
 	float x = norm.x, y = norm.y, z = norm.z;
 
 	return glm::vec3(mat[0][0] * x + mat[1][0] * y + mat[2][0] * z,
@@ -63,7 +70,6 @@ inline glm::vec3 TransformNormal(const glm::vec3& norm, const glm::mat4& mat)
 
 inline float saturate(float v) { if (v < 0) return 0; if (v > 1) return 1; return v; }
 
-// 将world space的点投影到屏幕
 inline glm::vec2 project(const glm::vec4& viewPort, const glm::vec3& point, const glm::mat4& viewProjectionMatrix)
 {
 	glm::vec4 clipPos;
@@ -76,13 +82,11 @@ inline glm::vec2 project(const glm::vec4& viewPort, const glm::vec3& point, cons
 	return out;
 }
 
-// 将屏幕点投影到world space
 inline glm::vec3 unProject(const glm::vec4& viewPort, const glm::vec2& point, float depth,const glm::mat4& viewProjectionMatrix)
 {
 	glm::mat4 inverseViewProjectionMatrix = glm::inverse(viewProjectionMatrix);
 	glm::vec4 screen = glm::vec4((point.x - viewPort.x) / viewPort.z, ((viewPort.w - point.y) - viewPort.y) / viewPort.w, depth, 1.0f);
 
-	//映射到[-1 , 1]
 	screen.x = screen.x * 2.0f - 1.0f;
 	screen.y = screen.y * 2.0f - 1.0f;
 	screen.z = screen.z * 2.0f - 1.0f;

@@ -131,16 +131,59 @@ void Scene::load(std::string file)
 		std::cout << error << std::endl;
 		return;
 	}
+    // load node
+    for (int i = 0; i < gltfModel.nodes.size(); i++)
+    {
+        const tinygltf::Node& gltfNode = gltfModel.nodes[i];
+        SceneNode node;
+        node.id = i;
+        node.parent = -1;
+        glm::vec3 translation = glm::vec3(0.0f);
+        if (gltfNode.translation.size() == 3)
+        {
+            translation = glm::make_vec3(gltfNode.translation.data());
+        }
 
+        glm::quat rotation = glm::quat(1, 0, 0, 0);
+        if (gltfNode.rotation.size() == 4)
+        {
+            rotation = glm::make_quat(gltfNode.rotation.data());
+        }
+
+        glm::vec3 scale = glm::vec3(1.0f);
+        if (gltfNode.scale.size() == 3)
+        {
+            scale = glm::make_vec3(gltfNode.scale.data());
+        }
+
+        node.translation = translation;
+        node.scale = scale;
+        node.rotation = rotation;
+        mNodes.push_back(node);
+    }
+
+    for (int i = 0; i < gltfModel.nodes.size(); i++)
+    {
+        const tinygltf::Node& gltfNode = gltfModel.nodes[i];
+        SceneNode& node = mNodes[i];
+        for (int j = 0; j < gltfNode.children.size(); j++)
+        {
+            SceneNode& childrenNode = mNodes[gltfNode.children[j]];
+            childrenNode.parent = node.id;
+            node.childrens.push_back(childrenNode.id);
+        }
+    }
+
+	// load mesh
 	for (size_t i = 0; i < gltfModel.nodes.size(); i++)
 	{
-		//???§Ú???node?????¦É??¦Ä???
 		const tinygltf::Node node = gltfModel.nodes[i];
 		if (node.mesh <= -1)
 		{
 			continue;
 		}
 		std::shared_ptr<TriangleMesh> triangleMesh = loadMesh(gltfModel,node.mesh);
+		triangleMesh->mWorldMatrix = getWorldMatrix(i);
 		std::shared_ptr<Model> model = std::shared_ptr<Model>(new Model(node.name,triangleMesh));
 		model->initModel();
 		mModels.push_back(model);
@@ -172,4 +215,29 @@ void Scene::draw(std::shared_ptr<ShaderProgram> sp)
 		sp->setMat4("model",mModels[i]->getWorldMatrix());
 		mModels[i]->draw();
 	}
+}
+
+glm::mat4 Scene::getLocalMatrix(int id)
+{
+    SceneNode& node = mNodes[id];
+    glm::mat4 r, t, s;
+    r = glm::toMat4(node.rotation);
+    t = glm::translate(glm::mat4(1.0), node.translation);
+    s = glm::scale(glm::mat4(1.0), node.scale);
+    return t * r * s;
+}
+
+glm::mat4 Scene::getWorldMatrix(int id)
+{
+    SceneNode& node = mNodes[id];
+    glm::mat4 out = getLocalMatrix(id);
+
+    int parent_id = node.parent;
+    while (parent_id != -1)
+    {
+        SceneNode& curNode = mNodes[parent_id];
+        out = getLocalMatrix(parent_id) * out;
+        parent_id = curNode.parent;
+    }
+    return out;
 }

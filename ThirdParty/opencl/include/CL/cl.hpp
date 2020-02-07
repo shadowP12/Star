@@ -318,7 +318,6 @@ public:
 #define __ERR_STR(x) NULL
 #endif // __CL_ENABLE_EXCEPTIONS
 
-
 namespace detail
 {
 #if defined(__CL_ENABLE_EXCEPTIONS)

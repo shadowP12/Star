@@ -1,17 +1,32 @@
+#define MAX_RENDER_DIST 20000.0f
+#define PI 3.14159265359f
+#define TWO_PI 6.28318530718f
+#define INV_PI 0.31830988618f
+#define INV_TWO_PI 0.15915494309f
 __constant float EPSILON = 0.00003f;
-__constant float PI = 3.14159265359f;
 __constant int SAMPLES = 32;
 
 #include "types.cl"
 #include "tools.cl"
 
-bool intersectBVH(const Ray* ray, __global BVHNode* nodes, __global Triangle* tris)
+float intersectSphere(const Sphere* sphere, const Ray* ray)
 {
-	float3 invDir = (float3)(1.0 / ray->dir.x, 1.0 / ray->dir.y, 1.0 / ray->dir.z);
-    int dirIsNeg[3];
-    dirIsNeg[0] = invDir.x < 0 ? 1:0;
-    dirIsNeg[1] = invDir.y < 0 ? 1:0;
-    dirIsNeg[2] = invDir.z < 0 ? 1:0;
+	float3 rayToCenter = sphere->pos - ray->origin;
+	float b = dot(rayToCenter, ray->dir);
+	float c = dot(rayToCenter, rayToCenter) - sphere->radius*sphere->radius;
+	float disc = b * b - c;
+
+	if (disc < 0.0f) return 0.0f;
+	else disc = sqrt(disc);
+
+	if ((b - disc) > EPSILON) return b - disc;
+	if ((b + disc) > EPSILON) return b + disc;
+	
+	return 0.0f;
+}
+
+bool occludedScene(Ray* ray, __global BVHNode* nodes, __global Triangle* tris)
+{
 	int todoOffset = 0;
     int nodeNum = 0;
 	int todo[128];
@@ -21,20 +36,63 @@ bool intersectBVH(const Ray* ray, __global BVHNode* nodes, __global Triangle* tr
 		BVHNode node = nodes[nodeNum];
 		if (intersectBBox(ray->origin, ray->dir, node.bboxMin, node.bboxMax))
 		{
-			if (node.numPrimitive > 0) 
+			if (node.numPrimitive > 0)
 			{
 				// leaf node
 				for (int i = 0; i < node.numPrimitive; ++i)
 				{
 					int inx = node.primitiveOffset + i;
-					Triangle tri = tris[inx];
-					float3 t0 = tri.p0;
-					float3 t1 = tri.p1;
-					float3 t2 = tri.p2;
-					if (intersectTri(ray->origin, ray->dir, t0, t1, t2)) 
+					if (occludedTriangle(ray, &tris[inx]))
 					{
 						return true;
 					}
+				}
+
+				// miss
+				if (todoOffset == 0)
+					break;
+				nodeNum = todo[--todoOffset];
+			}
+			else 
+            {
+					todo[todoOffset++] = node.secondChildOffset;
+					nodeNum = nodeNum + 1;
+			}
+		}
+		else
+		{
+			// miss
+			if (todoOffset == 0)
+				break;
+			nodeNum = todo[--todoOffset];
+		}
+	}
+	return false;
+}
+
+IntersectData intersectScene(Ray* ray, __global BVHNode* nodes, __global Triangle* tris)
+{
+	IntersectData isect;
+    isect.hit = false;
+    isect.ray = *ray;
+    isect.t = MAX_RENDER_DIST;
+
+	int todoOffset = 0;
+    int nodeNum = 0;
+	int todo[64];
+
+	while (true)
+	{
+		BVHNode node = nodes[nodeNum];
+		if (intersectBBox(ray->origin, ray->dir, node.bboxMin, node.bboxMax))
+		{
+			if (node.numPrimitive > 0)
+			{
+				// leaf node
+				for (int i = 0; i < node.numPrimitive; ++i)
+				{
+					int inx = node.primitiveOffset + i;
+					intersectTriangle(ray, &tris[inx], &isect);
 				}
 
 				// miss
@@ -56,9 +114,8 @@ bool intersectBVH(const Ray* ray, __global BVHNode* nodes, __global Triangle* tr
 			nodeNum = todo[--todoOffset];
 		}
 	}
-	return false;
+	return isect;
 }
-
 
 Ray genCameraRay(const int x_coord, const int y_coord, const int width, const int height, __constant Camera* cam) 
 {
@@ -84,18 +141,101 @@ Ray genCameraRay(const int x_coord, const int y_coord, const int width, const in
 	return ray;
 }
 
-__kernel void renderKernel(const int width, const int height, __constant Camera* cam, __global BVHNode* nodes, __global Triangle* tris, __write_only image2d_t output)
+float3 sampleDiffuse(float3 wo, float3* wi, float* pdf, float3 normal, unsigned int* seed0, unsigned int* seed1)
 {
+    *wi = sampleHemisphereCosine(normal, seed0, seed1);
+    *pdf = dot(*wi, normal) * INV_PI;
+
+    float3 albedo = (float3)(0.5f, 0.5f, 1.0f);
+    return albedo * INV_PI;
+}
+
+float3 sampleBrdf(float3 wo, float3* wi, float* pdf, float3 normal, unsigned int* seed0, unsigned int* seed1)
+{
+	return sampleDiffuse(wo, wi, pdf, normal, seed0, seed1);
+}
+
+float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, const Sphere* light, unsigned int* seed0, unsigned int* seed1)
+{
+	float3 radiance = 0.0f;
+    float3 beta = 1.0f;
+
+	Ray ray = *camray;
+	for (int i = 0; i < 5; ++i)
+    {
+		float t = intersectSphere(light, &ray);
+        IntersectData isect = intersectScene(&ray, nodes, tris);
+		
+        if (isect.hit == false && t == 0.0f)
+        {
+			//radiance = (float3)(0.05, 0.05, 0.05);
+            break;
+        }
+
+		if(t != 0.0)
+		{
+			// hit light
+			float3 hitpoint = ray.origin + ray.dir * t;
+			float3 normal = normalize(hitpoint - light->pos);
+			float3 normal_facing = dot(normal, ray.dir) < 0.0f ? normal : normal * (-1.0f);
+
+			float rand1 = 2.0f * PI * getRandom(seed0, seed1);
+			float rand2 = getRandom(seed0, seed1);
+			float rand2s = sqrt(rand2);
+
+			float3 w = normal_facing;
+			float3 axis = fabs(w.x) > 0.1f ? (float3)(0.0f, 1.0f, 0.0f) : (float3)(1.0f, 0.0f, 0.0f);
+			float3 u = normalize(cross(axis, w));
+			float3 v = cross(w, u);
+
+			float3 newdir = normalize(u * cos(rand1)*rand2s + v*sin(rand1)*rand2s + w*sqrt(1.0f - rand2));
+
+			ray.origin = hitpoint + normal_facing * EPSILON;
+			ray.dir = newdir;
+			radiance += beta * light->emission * 50000.0f;
+			//beta = 0.0f;
+            continue;
+		}
+
+		// hit mesh
+		float3 wi;
+		float3 wo = -ray.dir;
+		float pdf = 0.0f;
+		float3 f = sampleBrdf(wo, &wi, &pdf, isect.normal, seed0, seed1);
+		if (pdf <= 0.0f) break;
+
+		float3 mul = f * dot(wi, isect.normal);// / pdf;
+		beta *= mul;
+		ray.dir = wi;
+		ray.origin = isect.pos + wi * 0.01f;
+    }
+    return max(radiance, 0.0f);
+}
+
+__kernel void renderKernel(const int width, const int height, __constant Camera* cam, __global BVHNode* nodes, __global Triangle* tris, unsigned int frameCount, __write_only image2d_t output)
+{
+	Sphere light;
+	light.radius = 0.2f;
+	light.pos = (float3)(0.0f, 1.3f, 0.0f);
+	light.color = (float3)(0.0f, 0.0f, 0.0f);
+	light.emission  = (float3)(9.0f, 8.0f, 7.0f);
+
 	unsigned int coordX = get_global_id(0);
 	unsigned int coordY = get_global_id(1);
+	unsigned int seed0 = coordX + hashUInt32(frameCount);
+	unsigned int seed1 = coordY + hashUInt32(frameCount);
 
 	Ray ray = genCameraRay(coordX, coordY, width, height, cam);
-	float3 finalcolor = (float3)(0.0f, 0.0f, 0.0f);
+	float3 finalcolor = 0.0f;
+	
+	finalcolor = Render(&ray, nodes, tris, &light, &seed0, &seed1);
 
-	if(intersectBVH(&ray, nodes, tris))
-	{
-		finalcolor = (float3)(1.0f, 1.0f, 1.0f);
-	}
+	// float t = intersectSphere(&light, &ray);
+	// IntersectData isect = intersectScene(&ray, nodes, tris);
+	// if(isect.hit || t != 0.0f)
+	// {
+	// 	finalcolor = (float3)(1.0f, 1.0f, 1.0f);
+	// }
 
 	int2 coord=(int2)(coordX, coordY);
 	float4 val = (float4)(finalcolor.x, finalcolor.y, finalcolor.z, 1.0);

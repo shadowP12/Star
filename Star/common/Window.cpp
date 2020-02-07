@@ -49,6 +49,7 @@ void Window::initCLCore(rc::CLCore* core)
 	for (int i = 0; i < platforms.size(); i++)
 	{
 		std::string info = platforms[i].getInfo<CL_PLATFORM_VENDOR>();
+		printf("%s\n", info.c_str());
 		if (info.find("NVIDIA") != std::string::npos || info.find("AMD") != std::string::npos)
 		{
 			platformIndex = (int)i;

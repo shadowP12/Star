@@ -46,6 +46,7 @@ private:
 	std::shared_ptr<ShaderProgram> mDisplayProgram;
 	int mWidth;
 	int mHeight;
+	uint32_t mFrameCount;
 	CLCamera mGPUCamera;
 	CPUCamera mCPUCamera;
 };
