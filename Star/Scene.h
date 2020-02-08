@@ -4,15 +4,10 @@
 #include "Primitive.h"
 #include "Math/GMath.h"
 
-struct SceneNode
+struct Material
 {
-    std::string name;
-    int id;
-    int parent;
-    std::vector<int> childrens;
-    glm::vec3 translation;
-    glm::vec3 scale;
-    glm::quat rotation;
+    glm::vec3 baseColor;
+    glm::vec3 emissive;
 };
 
 class Scene
@@ -24,10 +19,9 @@ public:
 	void genPrimitives();
 	std::vector<std::shared_ptr<Primitive>>& getPrimitives();
 	void draw(std::shared_ptr<ShaderProgram> sp);
-    glm::mat4 getLocalMatrix(int id);
-    glm::mat4 getWorldMatrix(int id);
 private:
 	std::vector<std::shared_ptr<Model>> mModels;
+	std::vector<std::shared_ptr<Material>> mMaterials;
 	std::vector<std::shared_ptr<Primitive>> mPrimitives;
-	std::vector<SceneNode> mNodes;
+	std::vector<std::shared_ptr<Node>> mNodes;
 };

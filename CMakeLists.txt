@@ -8,6 +8,7 @@ include_directories(ThirdParty/glfw/include)
 include_directories(ThirdParty/opencl/include)
 include_directories(ThirdParty/glm/include)
 include_directories(ThirdParty/stb)
+include_directories(ThirdParty/cgltf)
 
 add_executable(star
         Star/main.cpp

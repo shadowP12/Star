@@ -29,18 +29,12 @@ int main()
 //    printf("CLVertex %d\n", sizeof(rc::CLVertex));
 //    printf("CLTriangle %d\n", sizeof(rc::CLTriangle));
 
-    glm::mat4 t = glm::translate(glm::mat4(1.0), glm::vec3(1.0, 1.0, 1.0));
-    //printMat(t);
-    glm::vec4 o = glm::vec4(1, 2, 3, 1);
-    glm::vec4 r = t * o;
-    printf("%f %f %f\n", r.x, r.y, r.z);
-
 	Input::startUp();
 	gCLCore = new rc::CLCore();
 	Window win(SCR_WIDTH, SCR_HEIGHT);
 	win.initCLCore(gCLCore);
 	std::shared_ptr<Scene> scene = std::make_shared<Scene>();
-	scene->load("Res/monkey.gltf");
+	scene->load("Res/test.gltf");
 	scene->genPrimitives();
 	BVH* bvh = new BVH(scene->getPrimitives());
 	// renderer
