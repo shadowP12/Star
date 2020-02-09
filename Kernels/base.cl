@@ -143,18 +143,17 @@ Ray genCameraRay(const int x_coord, const int y_coord, const int width, const in
 	return ray;
 }
 
-float3 sampleDiffuse(float3 wo, float3* wi, float* pdf, float3 normal, unsigned int* seed0, unsigned int* seed1)
+float3 sampleDiffuse(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed0, unsigned int* seed1)
 {
     *wi = sampleHemisphereCosine(normal, seed0, seed1);
     *pdf = dot(*wi, normal) * INV_PI;
 
-    float3 albedo = (float3)(0.5f, 0.5f, 1.0f);
-    return albedo * INV_PI;
+    return material->baseColor * INV_PI;
 }
 
-float3 sampleBrdf(float3 wo, float3* wi, float* pdf, float3 normal, unsigned int* seed0, unsigned int* seed1)
+float3 sampleBrdf(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed0, unsigned int* seed1)
 {
-	return sampleDiffuse(wo, wi, pdf, normal, seed0, seed1);
+	return sampleDiffuse(wo, wi, pdf, normal, material, seed0, seed1);
 }
 
 float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __global Material* materials, unsigned int* seed0, unsigned int* seed1)
@@ -163,7 +162,7 @@ float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __g
     float3 beta = 1.0f;
 
 	Ray ray = *camray;
-	for (int i = 0; i < 5; ++i)
+	for (int i = 0; i < 10; ++i)
     {
         IntersectData isect = intersectScene(&ray, nodes, tris);
 		
@@ -174,11 +173,23 @@ float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __g
         	return ((1.0f - t)*(float3)(1.0f, 1.0f, 1.0f) + t * (float3)(0.5f, 0.7f, 1.0f)) * 0.5f;
         }
 		__global Material* material = &materials[isect.object->mat];
-		radiance += beta * material->emission * 50.0f;
+
+		float3 lightPos = (float3)(0.0f, 1.5f, 0.0f);
+		float3 lightColor = (float3)(0.85f, 0.85f, 0.85f);
+		float ambientStrength = 0.1;
+		float3 ambient = ambientStrength * lightColor;
+		float3 lightDir = normalize(lightPos - isect.pos);
+		float diff = dot(isect.normal, lightDir);
+		float3 diffuse = diff * lightColor;
+				
+		return (ambient + diffuse) * material->baseColor;
+
+
+		radiance += beta * material->emission * 500.0f;
 		float3 wi;
 		float3 wo = -ray.dir;
 		float pdf = 0.0f;
-		float3 f = sampleBrdf(wo, &wi, &pdf, isect.normal, seed0, seed1);
+		float3 f = sampleBrdf(wo, &wi, &pdf, isect.normal, material, seed0, seed1);
 		if (pdf <= 0.0f) break;
 
 		float3 mul = f * dot(wi, isect.normal) / pdf;

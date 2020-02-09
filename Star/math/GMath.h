@@ -60,12 +60,16 @@ inline glm::vec3 TransformVector(const glm::vec3& vec, const glm::mat4& inMat)
 
 inline glm::vec3 TransformNormal(const glm::vec3& norm, const glm::mat4& inMat)
 {
+    return glm::mat3(glm::transpose(glm::inverse(inMat))) * norm;
+    /*
     glm::mat4 mat = glm::transpose(inMat);
+    mat = glm::transpose(mat);//transpose
 	float x = norm.x, y = norm.y, z = norm.z;
 
 	return glm::vec3(mat[0][0] * x + mat[1][0] * y + mat[2][0] * z,
 		mat[0][1] * x + mat[1][1] * y + mat[2][1] * z,
 		mat[0][2] * x + mat[1][2] * y + mat[2][2] * z);
+     */
 }
 
 inline float saturate(float v) { if (v < 0) return 0; if (v > 1) return 1; return v; }

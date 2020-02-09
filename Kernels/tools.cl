@@ -166,3 +166,13 @@ float3 randomInUnitDisk(unsigned int* seed0, unsigned int* seed1)
     return p;
 }
 
+float3 randomUnitVector(unsigned int* seed0, unsigned int* seed1)
+{
+    float z = getRandom(seed0, seed1) * 2.0f - 1.0f;
+    float a = getRandom(seed0, seed1) * 2.0f * PI;
+    float r = sqrt(1.0f - z * z);
+    float x = r * cos(a);
+    float y = r * sin(a);
+    return (float3)(x, y, z);
+}
+
