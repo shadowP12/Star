@@ -19,17 +19,17 @@ bool findAttributesType(cgltf_primitive* primitive, cgltf_attribute** inAtt, cgl
     return false;
 }
 
-std::shared_ptr<TriangleMesh> loadMesh(cgltf_mesh* mesh)
+std::shared_ptr<TriangleMesh> loadMesh(cgltf_mesh* mesh, std::vector<std::shared_ptr<Material>>& materials)
 {
 	uint32_t indexStart = 0;
 	uint32_t indexCount = 0;
 	std::vector<Vertex> vertexData;
 	std::vector<uint32_t> indexData;
+    std::shared_ptr<TriangleMesh> triangleMesh = std::shared_ptr<TriangleMesh>(new TriangleMesh());
 
 	for (int i = 0; i < mesh->primitives_count; i++)
 	{
         cgltf_primitive* primitive = &mesh->primitives[i];
-
 		indexStart += indexCount;
 		indexCount = 0;
 
@@ -103,7 +103,6 @@ std::shared_ptr<TriangleMesh> loadMesh(cgltf_mesh* mesh)
 				indexData.push_back(buf[index]);
 			}
 			break;
-
 		}
 		case cgltf_component_type_r_8u:
 		{
@@ -120,8 +119,22 @@ std::shared_ptr<TriangleMesh> loadMesh(cgltf_mesh* mesh)
 			std::cerr << "Index component type " << indexAccessor->component_type << " not supported!" << std::endl;
 			return nullptr;
 		}
+
+		// load material
+		std::shared_ptr<Material> mat = std::shared_ptr<Material>(new Material());
+
+		mat->emissive = glm::vec3(primitive->material->emissive_factor[0], primitive->material->emissive_factor[1], primitive->material->emissive_factor[2]);
+		mat->baseColor = glm::vec3(primitive->material->pbr_metallic_roughness.base_color_factor[0],
+                                   primitive->material->pbr_metallic_roughness.base_color_factor[1],
+                                   primitive->material->pbr_metallic_roughness.base_color_factor[2]);
+		materials.push_back(mat);
+		TriangleSubMesh subMesh;
+        subMesh.materialID = materials.size() - 1;
+        subMesh.indexCount = indexCount;
+        subMesh.indexOffset = indexStart;
+        triangleMesh->mSubMeshs.push_back(subMesh);
 	}//primitives
-	std::shared_ptr<TriangleMesh> triangleMesh = std::shared_ptr<TriangleMesh>(new TriangleMesh());
+
 	triangleMesh->mVertexBuffer = vertexData;
 	triangleMesh->mIndexBuffer = indexData;
 	triangleMesh->mVertexCount = vertexData.size();
@@ -199,13 +212,12 @@ void Scene::load(std::string file)
 
     printf("Result: %d\n", result);
 
-
     // load meshs
     for (int i = 0; i < data->nodes_count; i++)
     {
         if(data->nodes[i].mesh != nullptr)
         {
-            std::shared_ptr<TriangleMesh> triangleMesh = loadMesh(data->nodes[i].mesh);
+            std::shared_ptr<TriangleMesh> triangleMesh = loadMesh(data->nodes[i].mesh, mMaterials);
             triangleMesh->mWorldMatrix = getWorldMatrix(&data->nodes[i]);
             std::shared_ptr<Model> model = std::shared_ptr<Model>(new Model(data->nodes[i].name, triangleMesh));
             model->initModel();
@@ -310,11 +322,6 @@ void Scene::genPrimitives()
 	}
 }
 
-std::vector<std::shared_ptr<Primitive>>& Scene::getPrimitives()
-{
-	return mPrimitives;
-}
-
 void Scene::draw(std::shared_ptr<ShaderProgram> sp)
 {
 	for (int i = 0; i < mModels.size(); i++)
@@ -322,5 +329,15 @@ void Scene::draw(std::shared_ptr<ShaderProgram> sp)
 		sp->setMat4("model",mModels[i]->getWorldMatrix());
 		mModels[i]->draw();
 	}
+}
+
+std::vector<std::shared_ptr<Primitive>>& Scene::getPrimitives()
+{
+    return mPrimitives;
+}
+
+std::vector<std::shared_ptr<Material>>& Scene::getMaterials()
+{
+    return mMaterials;
 }
 

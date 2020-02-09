@@ -34,13 +34,13 @@ int main()
 	Window win(SCR_WIDTH, SCR_HEIGHT);
 	win.initCLCore(gCLCore);
 	std::shared_ptr<Scene> scene = std::make_shared<Scene>();
-	scene->load("Res/test.gltf");
+	scene->load("Res/monkey.gltf");
 	scene->genPrimitives();
 	BVH* bvh = new BVH(scene->getPrimitives());
 	// renderer
 	rc::RendererCL renderer(SCR_WIDTH, SCR_HEIGHT);
 	renderer.initCL(gCLCore);
-	renderer.initScene(bvh);
+	renderer.initScene(bvh, scene->getMaterials());
 
 	win.run([&renderer] {renderer.run(); });
 

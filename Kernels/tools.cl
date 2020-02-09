@@ -145,4 +145,24 @@ float3 sampleHemisphereCosine(float3 n, unsigned int* seed0, unsigned int* seed1
     return normalize(s*cos(phi)*sinTheta + t*sin(phi)*sinTheta + n*sqrt(1.0f - sinThetaSqr));
 }
 
+float2 pointInHexagon(unsigned int* seed0, unsigned int* seed1)
+{
+    float2 hexPoints[3] = { (float2)(-1.0f, 0.0f), (float2)(0.5f, 0.866f), (float2)(0.5f, -0.866f) };
+    int x = floor(getRandom(seed0, seed1) * 3.0f);
+    float2 v1 = hexPoints[x];
+    float2 v2 = hexPoints[(x + 1) % 3];
+    float p1 = getRandom(seed0, seed1);
+    float p2 = getRandom(seed0, seed1);
+    return (float2)(p1 * v1.x + p2 * v2.x, p1 * v1.y + p2 * v2.y);
+}
+
+float3 randomInUnitDisk(unsigned int* seed0, unsigned int* seed1)
+{
+    float3 p;
+    do
+    {
+        p = 2.0f * (float3)(getRandom(seed0, seed1), getRandom(seed0, seed1), 0) - (float3)(1,1,0);
+    } while (dot(p,p) >= 1.0);
+    return p;
+}
 

@@ -69,4 +69,10 @@ struct CLTriangle
     cl_int pad[3];
 };
 
+struct CLMaterial
+{
+    cl_float3 baseColor;
+    cl_float3 emissive;
+};
+
 RC_NAMESPACE_END

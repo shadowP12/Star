@@ -34,6 +34,7 @@ RendererCL::~RendererCL()
 	glDeleteBuffers(1, &mEBO);
 	delete mBVHNodes;
 	delete mTriangles;
+	delete mMaterials;
 }
 
 void RendererCL::resize(int width, int height)
@@ -103,9 +104,10 @@ void RendererCL::initCL(CLCore* core)
 	// 初始化容器
 	mBVHNodes = new GPUVector<CLBVHNode>(mCore);
 	mTriangles = new GPUVector<CLTriangle>(mCore);
+	mMaterials = new GPUVector<CLMaterial>(mCore);
 }
 
-void RendererCL::initScene(BVH* bvh)
+void RendererCL::initScene(BVH* bvh, std::vector<std::shared_ptr<Material>>& mats)
 {
 	// 初始化相机
 	mCPUCamera.position = glm::vec3(0, 0, 0);
@@ -116,7 +118,6 @@ void RendererCL::initScene(BVH* bvh)
 	mCameraBuffer = cl::Buffer(mCore->context,CL_MEM_WRITE_ONLY, sizeof(CLCamera));
 
 	// 初始化bvh节点
-
 	LinearBVHNode* nodes = bvh->getNodes();
 	int nodeCount = bvh->getNodeCount();
 	int max = 0;
@@ -162,9 +163,17 @@ void RendererCL::initScene(BVH* bvh)
 		tri.v0 = v0;
 		tri.v1 = v1;
 		tri.v2 = v2;
-		tri.mat = 0;
+		tri.mat = prims[i]->getTri()->getMaterialID();
 		mTriangles->pushBack(tri);
 	}
+    // seting gpu material data
+    for (int i = 0; i < mats.size(); ++i)
+    {
+        CLMaterial mat;
+        mat.baseColor = { {mats[i]->baseColor[0], mats[i]->baseColor[1], mats[i]->baseColor[2]} };
+        mat.emissive = { {mats[i]->emissive[0], mats[i]->emissive[1], mats[i]->emissive[2]} };
+        mMaterials->pushBack(mat);
+    }
 
 	// 设置GPU数据
 	updateCamera();
@@ -180,7 +189,8 @@ void RendererCL::initScene(BVH* bvh)
 	mKernel.setArg(2, mCameraBuffer);
 	mKernel.setArg(3, mBVHNodes->getBuffer());
 	mKernel.setArg(4, mTriangles->getBuffer());
-	mKernel.setArg(6, mImage);
+    mKernel.setArg(5, mMaterials->getBuffer());
+	mKernel.setArg(7, mImage);
 }
 
 #define float3(x, y, z) {{x, y, z}}
@@ -202,7 +212,7 @@ void RendererCL::run()
 	
 	// 更新GPU数据
 	mKernel.setArg(2, mCameraBuffer);
-    mKernel.setArg(5, mFrameCount);
+    mKernel.setArg(6, mFrameCount);
 
 	std::size_t globalWorkSize = mWidth * mHeight;
 	std::size_t localWorkSize = mKernel.getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(mCore->device);

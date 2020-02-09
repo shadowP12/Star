@@ -117,7 +117,7 @@ IntersectData intersectScene(Ray* ray, __global BVHNode* nodes, __global Triangl
 	return isect;
 }
 
-Ray genCameraRay(const int x_coord, const int y_coord, const int width, const int height, __constant Camera* cam) 
+Ray genCameraRay(const int x_coord, const int y_coord, const int width, const int height, __constant Camera* cam, unsigned int* seed0, unsigned int* seed1)
 {
 	// u v w
 	float3 w = normalize(cam->front);
@@ -132,12 +132,14 @@ Ray genCameraRay(const int x_coord, const int y_coord, const int width, const in
 	float3 lowerLeftCorner = origin - halfWidth*cam->params.w*u - halfHeight*cam->params.w*v - cam->params.w*w;
 	float3 horizontal = 2*halfWidth*cam->params.w*u;
     float3 vertical = 2*halfHeight*cam->params.w*v;
+	float lensRadius = cam->params.z/2.0;
+	float3 rd = lensRadius * randomInUnitDisk(seed0, seed1);
+	float3 offset = u * rd.x + rd.y;
 	float3 pixelPos = lowerLeftCorner + (float)x_coord*horizontal + (float)y_coord*vertical;
 	Ray ray;
-	ray.origin = cam->orig;
+	ray.origin = cam->orig + offset;
 	ray.dir = normalize(pixelPos - ray.origin);
 	
-
 	return ray;
 }
 
@@ -155,7 +157,7 @@ float3 sampleBrdf(float3 wo, float3* wi, float* pdf, float3 normal, unsigned int
 	return sampleDiffuse(wo, wi, pdf, normal, seed0, seed1);
 }
 
-float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, const Sphere* light, unsigned int* seed0, unsigned int* seed1)
+float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __global Material* materials, unsigned int* seed0, unsigned int* seed1)
 {
 	float3 radiance = 0.0f;
     float3 beta = 1.0f;
@@ -163,48 +165,23 @@ float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, con
 	Ray ray = *camray;
 	for (int i = 0; i < 5; ++i)
     {
-		float t = intersectSphere(light, &ray);
         IntersectData isect = intersectScene(&ray, nodes, tris);
 		
-        if (isect.hit == false && t == 0.0f)
+        if (!isect.hit)
         {
-			//radiance = (float3)(0.05, 0.05, 0.05);
-            break;
+			float3 unitDir = ray.dir;
+        	float t = 0.5f*(unitDir.y + 1.0f);
+        	return ((1.0f - t)*(float3)(1.0f, 1.0f, 1.0f) + t * (float3)(0.5f, 0.7f, 1.0f)) * 0.5f;
         }
-
-		if(t != 0.0)
-		{
-			// hit light
-			float3 hitpoint = ray.origin + ray.dir * t;
-			float3 normal = normalize(hitpoint - light->pos);
-			float3 normal_facing = dot(normal, ray.dir) < 0.0f ? normal : normal * (-1.0f);
-
-			float rand1 = 2.0f * PI * getRandom(seed0, seed1);
-			float rand2 = getRandom(seed0, seed1);
-			float rand2s = sqrt(rand2);
-
-			float3 w = normal_facing;
-			float3 axis = fabs(w.x) > 0.1f ? (float3)(0.0f, 1.0f, 0.0f) : (float3)(1.0f, 0.0f, 0.0f);
-			float3 u = normalize(cross(axis, w));
-			float3 v = cross(w, u);
-
-			float3 newdir = normalize(u * cos(rand1)*rand2s + v*sin(rand1)*rand2s + w*sqrt(1.0f - rand2));
-
-			ray.origin = hitpoint + normal_facing * EPSILON;
-			ray.dir = newdir;
-			radiance += beta * light->emission * 50000.0f;
-			//beta = 0.0f;
-            continue;
-		}
-
-		// hit mesh
+		__global Material* material = &materials[isect.object->mat];
+		radiance += beta * material->emission * 50.0f;
 		float3 wi;
 		float3 wo = -ray.dir;
 		float pdf = 0.0f;
 		float3 f = sampleBrdf(wo, &wi, &pdf, isect.normal, seed0, seed1);
 		if (pdf <= 0.0f) break;
 
-		float3 mul = f * dot(wi, isect.normal);// / pdf;
+		float3 mul = f * dot(wi, isect.normal) / pdf;
 		beta *= mul;
 		ray.dir = wi;
 		ray.origin = isect.pos + wi * 0.01f;
@@ -212,7 +189,7 @@ float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, con
     return max(radiance, 0.0f);
 }
 
-__kernel void renderKernel(const int width, const int height, __constant Camera* cam, __global BVHNode* nodes, __global Triangle* tris, unsigned int frameCount, __write_only image2d_t output)
+__kernel void renderKernel(const int width, const int height, __constant Camera* cam, __global BVHNode* nodes, __global Triangle* tris, __global Material* materials, unsigned int frameCount, __write_only image2d_t output)
 {
 	Sphere light;
 	light.radius = 0.2f;
@@ -225,10 +202,10 @@ __kernel void renderKernel(const int width, const int height, __constant Camera*
 	unsigned int seed0 = coordX + hashUInt32(frameCount);
 	unsigned int seed1 = coordY + hashUInt32(frameCount);
 
-	Ray ray = genCameraRay(coordX, coordY, width, height, cam);
+	Ray ray = genCameraRay(coordX, coordY, width, height, cam, &seed0, &seed1);
 	float3 finalcolor = 0.0f;
 	
-	finalcolor = Render(&ray, nodes, tris, &light, &seed0, &seed1);
+	finalcolor = Render(&ray, nodes, tris, materials, &seed0, &seed1);
 
 	// float t = intersectSphere(&light, &ray);
 	// IntersectData isect = intersectScene(&ray, nodes, tris);

@@ -33,6 +33,12 @@ typedef struct Vertex
     float3 texcoord;
 } Vertex;
 
+typedef struct Material
+{
+    float3 baseColor;
+    float3 emission;
+} Material;
+
 typedef struct Triangle{
 	Vertex v0;
 	Vertex v1;

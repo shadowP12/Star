@@ -136,4 +136,18 @@ void Triangle::getUVData(glm::vec2 &t0, glm::vec2 &t1, glm::vec2 &t2)
     t2 = mMesh->mVertexBuffer[mVertexIndices[2]].uv;
 }
 
+uint32_t Triangle::getMaterialID()
+{
+    uint32_t id = -1;
+    for (int i = 0; i < mMesh->mSubMeshs.size(); ++i)
+    {
+        TriangleSubMesh& subMesh = mMesh->mSubMeshs[i];
+        if(mVertexIndices[0] >= mMesh->mSubMeshs[i].indexOffset && mVertexIndices[0] <= mMesh->mSubMeshs[i].indexOffset + mMesh->mSubMeshs[i].indexCount)
+        {
+            id = mMesh->mSubMeshs[i].materialID;
+            break;
+        }
+    }
+    return id;
+}
 

@@ -18,7 +18,7 @@ public:
 	void getPositionData(glm::vec3& p0, glm::vec3& p1, glm::vec3& p2);
     void getNormalData(glm::vec3& n0, glm::vec3& n1, glm::vec3& n2);
     void getUVData(glm::vec2& t0, glm::vec2& t1, glm::vec2& t2);
-
+    uint32_t getMaterialID();
 private:
 	std::shared_ptr<TriangleMesh> mMesh;
 	int mVertexIndices[3];
