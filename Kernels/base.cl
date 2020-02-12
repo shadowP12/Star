@@ -117,7 +117,7 @@ IntersectData intersectScene(Ray* ray, __global BVHNode* nodes, __global Triangl
 	return isect;
 }
 
-Ray genCameraRay(const int x_coord, const int y_coord, const int width, const int height, __constant Camera* cam, unsigned int* seed0, unsigned int* seed1)
+Ray genCameraRay(const int width, const int height, const int x_coord, const int y_coord, __constant Camera* cam)
 {
 	// u v w
 	float3 w = normalize(cam->front);
@@ -132,12 +132,9 @@ Ray genCameraRay(const int x_coord, const int y_coord, const int width, const in
 	float3 lowerLeftCorner = origin - halfWidth*cam->params.w*u - halfHeight*cam->params.w*v - cam->params.w*w;
 	float3 horizontal = 2*halfWidth*cam->params.w*u;
     float3 vertical = 2*halfHeight*cam->params.w*v;
-	float lensRadius = cam->params.z/2.0;
-	float3 rd = lensRadius * randomInUnitDisk(seed0, seed1);
-	float3 offset = u * rd.x + rd.y;
 	float3 pixelPos = lowerLeftCorner + (float)x_coord*horizontal + (float)y_coord*vertical;
 	Ray ray;
-	ray.origin = cam->orig + offset;
+	ray.origin = cam->orig;
 	ray.dir = normalize(pixelPos - ray.origin);
 	
 	return ray;
@@ -146,8 +143,10 @@ Ray genCameraRay(const int x_coord, const int y_coord, const int width, const in
 float3 sampleDiffuse(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed0, unsigned int* seed1)
 {
     *wi = sampleHemisphereCosine(normal, seed0, seed1);
-    *pdf = dot(*wi, normal) * INV_PI;
-
+	if(sameHemisphere(wo, *wi))
+    	*pdf = fabs(wi->z) * INV_PI;
+	else
+		*pdf = 0.0f;
     return material->baseColor * INV_PI;
 }
 
@@ -172,32 +171,41 @@ float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __g
         	float t = 0.5f*(unitDir.y + 1.0f);
         	return ((1.0f - t)*(float3)(1.0f, 1.0f, 1.0f) + t * (float3)(0.5f, 0.7f, 1.0f)) * 0.5f;
         }
+
 		__global Material* material = &materials[isect.object->mat];
-
-		float3 lightPos = (float3)(0.0f, 1.5f, 0.0f);
-		float3 lightColor = (float3)(0.85f, 0.85f, 0.85f);
-		float ambientStrength = 0.1;
-		float3 ambient = ambientStrength * lightColor;
-		float3 lightDir = normalize(lightPos - isect.pos);
-		float diff = dot(isect.normal, lightDir);
-		float3 diffuse = diff * lightColor;
-				
-		return (ambient + diffuse) * material->baseColor;
-
-
-		radiance += beta * material->emission * 500.0f;
-		float3 wi;
-		float3 wo = -ray.dir;
-		float pdf = 0.0f;
-		float3 f = sampleBrdf(wo, &wi, &pdf, isect.normal, material, seed0, seed1);
-		if (pdf <= 0.0f) break;
-
-		float3 mul = f * dot(wi, isect.normal) / pdf;
-		beta *= mul;
+		radiance += beta * (material->emission) * 50.0f;
+		float3 target = isect.pos - isect.normal + randomInUnitSphere(seed0, seed1);
+		float3 wi = target- isect.pos;
+		float3 attenuation = material->baseColor;
+		beta *= attenuation;
 		ray.dir = wi;
 		ray.origin = isect.pos + wi * 0.01f;
     }
     return max(radiance, 0.0f);
+}
+
+Ray CreateRay(uint width, uint height, int coordX, int coordY, __constant Camera* cam)
+{
+	float3 cameraPos = cam->orig;
+	float3 cameraFront = cam->front;
+	float3 cameraUp = cam->up;
+
+    float invWidth = 1.0f / (float)(width), invHeight = 1.0f / (float)(height);
+    float aspectratio = (float)(width) / (float)(height);
+    float fov = 45.0f * 3.1415f / 180.0f;
+    float angle = tan(0.5f * fov);
+
+    float x = coordX - 0.5f;
+    float y = coordY - 0.5f;
+
+    x = (2.0f * ((x + 0.5f) * invWidth) - 1) * angle * aspectratio;
+    y = -(1.0f - 2.0f * ((y + 0.5f) * invHeight)) * angle;
+
+    float3 dir = normalize(x * cross(cameraFront, cameraUp) + y * cameraUp + cameraFront);
+    Ray ray;
+	ray.origin = cameraPos;
+	ray.dir = dir;
+    return ray;
 }
 
 __kernel void renderKernel(const int width, const int height, __constant Camera* cam, __global BVHNode* nodes, __global Triangle* tris, __global Material* materials, unsigned int frameCount, __write_only image2d_t output)
@@ -213,10 +221,16 @@ __kernel void renderKernel(const int width, const int height, __constant Camera*
 	unsigned int seed0 = coordX + hashUInt32(frameCount);
 	unsigned int seed1 = coordY + hashUInt32(frameCount);
 
-	Ray ray = genCameraRay(coordX, coordY, width, height, cam, &seed0, &seed1);
+	Ray ray = CreateRay(width, height, coordX, coordY, cam);
 	float3 finalcolor = 0.0f;
-	
-	finalcolor = Render(&ray, nodes, tris, materials, &seed0, &seed1);
+	float invSamples = 1.0f / SAMPLES;
+	for (int i = 0; i < SAMPLES; ++i)
+	{
+		finalcolor += Render(&ray, nodes, tris, materials, &seed0, &seed1) * invSamples;
+	}
+	finalcolor = (float3)(clamp(finalcolor.x, 0.0f, 1.0f), 
+						  clamp(finalcolor.y, 0.0f, 1.0f), 
+						  clamp(finalcolor.z, 0.0f, 1.0f));
 
 	// float t = intersectSphere(&light, &ray);
 	// IntersectData isect = intersectScene(&ray, nodes, tris);
@@ -224,7 +238,7 @@ __kernel void renderKernel(const int width, const int height, __constant Camera*
 	// {
 	// 	finalcolor = (float3)(1.0f, 1.0f, 1.0f);
 	// }
-
+	
 	int2 coord=(int2)(coordX, coordY);
 	float4 val = (float4)(finalcolor.x, finalcolor.y, finalcolor.z, 1.0);
     write_imagef(output, coord, val);

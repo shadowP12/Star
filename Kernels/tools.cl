@@ -106,7 +106,7 @@ float getRandomFloat(unsigned int* seed)
     return (float)(*seed) * 2.3283064365386963e-10f;
 }
 
-float getRandom(unsigned int *seed0, unsigned int *seed1) 
+float getRandom(unsigned int *seed0, unsigned int *seed1)
 {
 	*seed0 = 36969 * ((*seed0) & 65535) + ((*seed0) >> 16);
 	*seed1 = 18000 * ((*seed1) & 65535) + ((*seed1) >> 16);
@@ -166,6 +166,16 @@ float3 randomInUnitDisk(unsigned int* seed0, unsigned int* seed1)
     return p;
 }
 
+float3 randomInUnitSphere(unsigned int* seed0, unsigned int* seed1)
+{
+    float3 p;
+    do
+    {
+        p = 2.0f * (float3)(getRandom(seed0, seed1), getRandom(seed0, seed1), getRandom(seed0, seed1)) - (float3)(1,1,1);
+    } while (dot(p,p) >= 1.0);
+    return p;
+}
+
 float3 randomUnitVector(unsigned int* seed0, unsigned int* seed1)
 {
     float z = getRandom(seed0, seed1) * 2.0f - 1.0f;
@@ -175,4 +185,34 @@ float3 randomUnitVector(unsigned int* seed0, unsigned int* seed1)
     float y = r * sin(a);
     return (float3)(x, y, z);
 }
+
+float2 rejectionSampleDisk(unsigned int* seed0, unsigned int* seed1)
+{
+	float x,y;
+	do {
+		x = getRandom(seed0, seed1);
+		y = getRandom(seed0, seed1);
+	} while (x * x + y * y > 1.0f);
+	return (float2)(x, y);
+}
+
+bool sameHemisphere(float3 w, float3 wp)
+{
+	return w.z * wp.z > 0.f;
+}
+
+float3 uniformSampleHemisphere(unsigned int* seed0, unsigned int* seed1)
+{
+	float ux = getRandom(seed0, seed1);
+	float uy = getRandom(seed0, seed1);
+	float z = ux;
+	float r = sqrt(1.0f - z*z);
+	float phi = 2*PI*uy;
+	float x = r * cos(phi);
+    float y = r * sin(phi);
+
+    return (float3)(x, y, z);
+}
+
+
 

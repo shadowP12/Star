@@ -109,6 +109,11 @@ void RendererCL::initCL(CLCore* core)
 
 void RendererCL::initScene(BVH* bvh, std::vector<std::shared_ptr<Material>>& mats)
 {
+    for (int j = 0; j < mats.size(); ++j)
+    {
+        printf("baseColor %f %f %f\n", mats[j]->baseColor.x, mats[j]->baseColor.y, mats[j]->baseColor.z);
+        printf("emissive %f %f %f\n", mats[j]->emissive.x, mats[j]->emissive.y, mats[j]->emissive.z);
+    }
 	// 初始化相机
 	mCPUCamera.position = glm::vec3(0, 0, 0);
 	mCPUCamera.front = glm::vec3(0, 0, -1);
@@ -164,6 +169,11 @@ void RendererCL::initScene(BVH* bvh, std::vector<std::shared_ptr<Material>>& mat
 		tri.v1 = v1;
 		tri.v2 = v2;
 		tri.mat = prims[i]->getTri()->getMaterialID();
+		if(mats[tri.mat]->emissive.x > 0.0f)
+        {
+            printf("%f %f %f", mats[tri.mat]->baseColor.x, mats[tri.mat]->baseColor.y, mats[tri.mat]->baseColor.z);
+		    printf("%f %f %f", mats[tri.mat]->emissive.x, mats[tri.mat]->emissive.y, mats[tri.mat]->emissive.z);
+        }
 		mTriangles->pushBack(tri);
 	}
     // seting gpu material data
@@ -251,7 +261,7 @@ void RendererCL::updateCamera()
 	mCPUCamera.lastMousePosition = Input::instance().getMousePosition();
 	if (Input::instance().getMouseButton(MouseButton::MouseRight))
 	{
-		mCPUCamera.yaw += -offset.x * 0.1f;
+		mCPUCamera.yaw += offset.x * 0.1f;
 		mCPUCamera.pitch += -offset.y * 0.1f;
 		glm::vec3 front;
 		front.x = cos(glm::radians(mCPUCamera.yaw)) * cos(glm::radians(mCPUCamera.pitch));
