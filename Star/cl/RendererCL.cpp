@@ -115,9 +115,9 @@ void RendererCL::initScene(BVH* bvh, std::vector<std::shared_ptr<Material>>& mat
         printf("emissive %f %f %f\n", mats[j]->emissive.x, mats[j]->emissive.y, mats[j]->emissive.z);
     }
 	// 初始化相机
-	mCPUCamera.position = glm::vec3(0, 0, 0);
-	mCPUCamera.front = glm::vec3(0, 0, -1);
-	mCPUCamera.up = glm::vec3(0.0f, 1.0f, 0.0f);
+	mCPUCamera.position = glm::vec3(0.0f, 1.54f, 3.14f);
+	mCPUCamera.front = glm::vec3(-0.02f, -0.17, -0.98);
+	mCPUCamera.up = glm::vec3(0.0f, 1.0f, -0.17f);
 	mCPUCamera.yaw = -90.0f;
 	mCPUCamera.pitch = 0.0f;
 	mCameraBuffer = cl::Buffer(mCore->context,CL_MEM_WRITE_ONLY, sizeof(CLCamera));

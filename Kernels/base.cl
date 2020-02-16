@@ -4,7 +4,7 @@
 #define INV_PI 0.31830988618f
 #define INV_TWO_PI 0.15915494309f
 __constant float EPSILON = 0.00003f;
-__constant int SAMPLES = 32;
+__constant int SAMPLES = 2;
 
 #include "types.cl"
 #include "tools.cl"
@@ -143,10 +143,7 @@ Ray genCameraRay(const int width, const int height, const int x_coord, const int
 float3 sampleDiffuse(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed0, unsigned int* seed1)
 {
     *wi = sampleHemisphereCosine(normal, seed0, seed1);
-	if(sameHemisphere(wo, *wi))
-    	*pdf = fabs(wi->z) * INV_PI;
-	else
-		*pdf = 0.0f;
+	*pdf = dot(*wi, normal) * INV_PI;
     return material->baseColor * INV_PI;
 }
 
@@ -173,11 +170,14 @@ float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __g
         }
 
 		__global Material* material = &materials[isect.object->mat];
-		radiance += beta * (material->emission) * 50.0f;
-		float3 target = isect.pos - isect.normal + randomInUnitSphere(seed0, seed1);
-		float3 wi = target- isect.pos;
-		float3 attenuation = material->baseColor;
-		beta *= attenuation;
+		radiance += beta * (material->emission) * 100.0f;
+		float3 wi;// = sampleHemisphereCosine(-isect.normal, seed0, seed1);
+		float3 wo = -ray.dir;
+		float pdf = 0.0f;
+        float3 f = sampleBrdf(wo, &wi, &pdf, -isect.normal, material, seed0, seed1);
+        if (pdf <= 0.0f) break;
+        float3 mul = f * dot(wi, isect.normal) / pdf;
+        beta *= mul;
 		ray.dir = wi;
 		ray.origin = isect.pos + wi * 0.01f;
     }
