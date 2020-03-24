@@ -170,7 +170,7 @@ float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __g
         }
 
 		__global Material* material = &materials[isect.object->mat];
-		radiance += beta * (material->emission) * 100.0f;
+		radiance += beta * (material->emission) * 200.0f;
 		float3 wi;// = sampleHemisphereCosine(-isect.normal, seed0, seed1);
 		float3 wo = -ray.dir;
 		float pdf = 0.0f;
@@ -208,7 +208,7 @@ Ray CreateRay(uint width, uint height, int coordX, int coordY, __constant Camera
     return ray;
 }
 
-__kernel void renderKernel(const int width, const int height, __constant Camera* cam, __global BVHNode* nodes, __global Triangle* tris, __global Material* materials, unsigned int frameCount, __write_only image2d_t output)
+__kernel void renderKernel(const int width, const int height, __constant Camera* cam, __global BVHNode* nodes, __global Triangle* tris, __global Material* materials, unsigned int frameCount, __global float3* output)
 {
 	Sphere light;
 	light.radius = 0.2f;
@@ -228,9 +228,10 @@ __kernel void renderKernel(const int width, const int height, __constant Camera*
 	{
 		finalcolor += Render(&ray, nodes, tris, materials, &seed0, &seed1) * invSamples;
 	}
-	finalcolor = (float3)(clamp(finalcolor.x, 0.0f, 1.0f), 
-						  clamp(finalcolor.y, 0.0f, 1.0f), 
-						  clamp(finalcolor.z, 0.0f, 1.0f));
+
+//	finalcolor = (float3)(clamp(finalcolor.x, 0.0f, 1.0f),
+//						  clamp(finalcolor.y, 0.0f, 1.0f),
+//						  clamp(finalcolor.z, 0.0f, 1.0f));
 
 	// float t = intersectSphere(&light, &ray);
 	// IntersectData isect = intersectScene(&ray, nodes, tris);
@@ -238,8 +239,32 @@ __kernel void renderKernel(const int width, const int height, __constant Camera*
 	// {
 	// 	finalcolor = (float3)(1.0f, 1.0f, 1.0f);
 	// }
-	
-	int2 coord=(int2)(coordX, coordY);
-	float4 val = (float4)(finalcolor.x, finalcolor.y, finalcolor.z, 1.0);
-    write_imagef(output, coord, val);
+
+    output[coordY * width + coordX] = finalcolor;
+}
+
+__kernel void accumulate(__global float3* input, __global float3* output, uint width)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+    float3 inputData = input[y * width + x];
+    float3 outputData = output[y * width + x];
+    output[y * width + x] = inputData + outputData;
+}
+
+__kernel void clearAccumulate(__global float3* data, uint width)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+    data[y * width + x] = (float3)(0.0, 0.0, 0.0);
+}
+
+__kernel void display(__global float3* input, __write_only image2d_t output, uint sampleCount, uint width)
+{
+    int x = get_global_id(0);
+    int y = get_global_id(1);
+    int2 texCoords = (int2)(x, y);
+    float3 inputData = input[y * width + x];
+    inputData = inputData / sampleCount;
+    write_imagef(output, texCoords, (float4)(inputData, 1.0f));
 }

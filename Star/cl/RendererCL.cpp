@@ -100,11 +100,25 @@ void RendererCL::initCL(CLCore* core)
 
 	// 初始化Kernel
 	mKernel = cl::Kernel(mProgram, "renderKernel");
+    mAccumulateKernel = cl::Kernel(mProgram, "accumulate");
+    mDisplayKernel = cl::Kernel(mProgram, "display");
+    mClearAccumulateKernel = cl::Kernel(mProgram, "clearAccumulate");
 
 	// 初始化容器
 	mBVHNodes = new GPUVector<CLBVHNode>(mCore);
 	mTriangles = new GPUVector<CLTriangle>(mCore);
 	mMaterials = new GPUVector<CLMaterial>(mCore);
+
+	//
+    mResultImage = cl::Image2D(mCore->context,CL_MEM_READ_WRITE,cl::ImageFormat(CL_RGBA, CL_SNORM_INT8),
+                            mWidth,mHeight,0,0,nullptr);
+
+    mAccumulateImage = cl::Image2D(mCore->context,CL_MEM_READ_WRITE,cl::ImageFormat(CL_RGBA, CL_SNORM_INT8),
+                                  mWidth,mHeight,0,0,nullptr);
+
+    mAccumulationBuffer = cl::Buffer(mCore->context, CL_MEM_READ_WRITE, mWidth * mHeight * sizeof(cl_float3), nullptr, nullptr);
+
+    mResultBuffer = cl::Buffer(mCore->context, CL_MEM_READ_WRITE, mWidth * mHeight * sizeof(cl_float3), nullptr, nullptr);
 }
 
 void RendererCL::initScene(BVH* bvh, std::vector<std::shared_ptr<Material>>& mats)
@@ -200,7 +214,18 @@ void RendererCL::initScene(BVH* bvh, std::vector<std::shared_ptr<Material>>& mat
 	mKernel.setArg(3, mBVHNodes->getBuffer());
 	mKernel.setArg(4, mTriangles->getBuffer());
     mKernel.setArg(5, mMaterials->getBuffer());
-	mKernel.setArg(7, mImage);
+	mKernel.setArg(7, mResultBuffer);
+
+	mAccumulateKernel.setArg(0, mResultBuffer);
+    mAccumulateKernel.setArg(1, mAccumulationBuffer);
+    mAccumulateKernel.setArg(2, mWidth);
+
+    mDisplayKernel.setArg(0, mAccumulationBuffer);
+	mDisplayKernel.setArg(1, mImage);
+    mDisplayKernel.setArg(3, mWidth);
+
+    mClearAccumulateKernel.setArg(0, mAccumulationBuffer);
+    mClearAccumulateKernel.setArg(1, mWidth);
 }
 
 #define float3(x, y, z) {{x, y, z}}
@@ -210,10 +235,12 @@ inline unsigned divup(unsigned a, unsigned b)
     return (a+b-1)/b;
 }
 
+static int sampleCount = 1;
+
 void RendererCL::run()
 {
 	// 更新相机数据
-	updateCamera();
+	int dirty = updateCamera();
 	mGPUCamera.orig = { {mCPUCamera.position.x, mCPUCamera.position.y, mCPUCamera.position.z} };
 	mGPUCamera.front = { {mCPUCamera.front.x, mCPUCamera.front.y, mCPUCamera.front.z} };
 	mGPUCamera.up = { {mCPUCamera.up.x, mCPUCamera.up.y, mCPUCamera.up.z} };
@@ -232,12 +259,27 @@ void RendererCL::run()
 	glFinish();
 	mCore->queue.enqueueAcquireGLObjects(&mMemorys);
 	mCore->queue.finish();
-	cl::NDRange local(16, 16);
+	cl::NDRange local(32, 32);
 	cl::NDRange global(local[0] * divup(mWidth, local[0]), local[1] * divup(mHeight, local[1]));
 
-	// 执行Kernel
+	// 清空
+	if(dirty == 1)
+    {
+        mCore->queue.enqueueNDRangeKernel(mClearAccumulateKernel, cl::NullRange, global, local);
+        sampleCount = 1;
+    }
+
+	// 执行光追
 	mCore->queue.enqueueNDRangeKernel(mKernel, cl::NullRange, global, local);
-	mCore->queue.finish();
+
+    // 累加结果
+    mCore->queue.enqueueNDRangeKernel(mAccumulateKernel, cl::NullRange, global, local);
+
+    // 保存结果
+    mDisplayKernel.setArg(2, sampleCount);
+    mCore->queue.enqueueNDRangeKernel(mDisplayKernel, cl::NullRange, global, local);
+
+    mCore->queue.finish();
 
 	mCore->queue.enqueueReleaseGLObjects(&mMemorys);
 	mCore->queue.finish();
@@ -253,10 +295,13 @@ void RendererCL::run()
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     mFrameCount++;
+    sampleCount++;
+    //printf("%d\n", sampleCount);
 }
 
-void RendererCL::updateCamera()
+int RendererCL::updateCamera()
 {
+    int dirtyFlag = 0;
 	glm::vec2 offset = Input::instance().getMousePosition() - mCPUCamera.lastMousePosition;
 	mCPUCamera.lastMousePosition = Input::instance().getMousePosition();
 	if (Input::instance().getMouseButton(MouseButton::MouseRight))
@@ -270,11 +315,14 @@ void RendererCL::updateCamera()
 		mCPUCamera.front = glm::normalize(front);
 		mCPUCamera.right = glm::normalize(glm::cross(mCPUCamera.front, glm::vec3(0, 1, 0)));
 		mCPUCamera.up = glm::normalize(glm::cross(mCPUCamera.right, mCPUCamera.front));
+        dirtyFlag = 1;
 	}
 	if (Input::instance().getMouseScrollWheel() != 0)
 	{
 		float sw = Input::instance().getMouseScrollWheel();
 		mCPUCamera.position += mCPUCamera.front * sw * 0.1f;
+        dirtyFlag = 1;
 	}
+	return dirtyFlag;
 }
 RC_NAMESPACE_END

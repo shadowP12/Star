@@ -31,12 +31,19 @@ public:
 	void initCL(CLCore* core);
 	void initScene(BVH* bvh, std::vector<std::shared_ptr<Material>>& mats);
 private:
-	void updateCamera();
+	int updateCamera();
 private:
 	CLCore* mCore;
 	cl::Program mProgram;
 	cl::Kernel mKernel;
+    cl::Kernel mAccumulateKernel;
+    cl::Kernel mDisplayKernel;
+    cl::Kernel mClearAccumulateKernel;
+    cl::Image2D mResultImage;
+	cl::Image2D mAccumulateImage;
 	cl::ImageGL mImage;
+    cl::Buffer mResultBuffer;
+    cl::Buffer mAccumulationBuffer;
 	std::vector<cl::Memory> mMemorys;
 	GPUVector<CLBVHNode>* mBVHNodes;
 	GPUVector<CLTriangle>* mTriangles;
