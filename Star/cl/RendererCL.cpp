@@ -185,8 +185,8 @@ void RendererCL::initScene(BVH* bvh, std::vector<std::shared_ptr<Material>>& mat
 		tri.mat = prims[i]->getTri()->getMaterialID();
 		if(mats[tri.mat]->emissive.x > 0.0f)
         {
-            printf("%f %f %f", mats[tri.mat]->baseColor.x, mats[tri.mat]->baseColor.y, mats[tri.mat]->baseColor.z);
-		    printf("%f %f %f", mats[tri.mat]->emissive.x, mats[tri.mat]->emissive.y, mats[tri.mat]->emissive.z);
+            //printf("%f %f %f", mats[tri.mat]->baseColor.x, mats[tri.mat]->baseColor.y, mats[tri.mat]->baseColor.z);
+		    //printf("%f %f %f", mats[tri.mat]->emissive.x, mats[tri.mat]->emissive.y, mats[tri.mat]->emissive.z);
         }
 		mTriangles->pushBack(tri);
 	}
@@ -323,6 +323,7 @@ int RendererCL::updateCamera()
 		mCPUCamera.position += mCPUCamera.front * sw * 0.1f;
         dirtyFlag = 1;
 	}
+
 	return dirtyFlag;
 }
 RC_NAMESPACE_END

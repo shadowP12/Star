@@ -1,10 +1,11 @@
-#define MAX_RENDER_DIST 20000.0f
+#pragma OPENCL EXTENSION cl_nv_printf : enable
+#define MAX_RENDER_DIST 200000.0f
 #define PI 3.14159265359f
 #define TWO_PI 6.28318530718f
 #define INV_PI 0.31830988618f
 #define INV_TWO_PI 0.15915494309f
 __constant float EPSILON = 0.00003f;
-__constant int SAMPLES = 2;
+__constant int SAMPLES = 1;
 
 #include "types.cl"
 #include "tools.cl"
@@ -88,6 +89,7 @@ IntersectData intersectScene(Ray* ray, __global BVHNode* nodes, __global Triangl
 		{
 			if (node.numPrimitive > 0)
 			{
+
 				// leaf node
 				for (int i = 0; i < node.numPrimitive; ++i)
 				{
@@ -140,6 +142,53 @@ Ray genCameraRay(const int width, const int height, const int x_coord, const int
 	return ray;
 }
 
+Ray CreateRay(uint width, uint height, int coordX, int coordY, __constant Camera* cam)
+{
+    float3 cameraPos = cam->orig;
+    float3 cameraFront = cam->front;
+    float3 cameraUp = cam->up;
+
+    float invWidth = 1.0f / (float)(width), invHeight = 1.0f / (float)(height);
+    float aspectratio = (float)(width) / (float)(height);
+    float fov = 45.0f * 3.1415f / 180.0f;
+    float angle = tan(0.5f * fov);
+
+    float x = coordX - 0.5f;
+    float y = coordY - 0.5f;
+
+    x = (2.0f * ((x + 0.5f) * invWidth) - 1) * angle * aspectratio;
+    y = -(1.0f - 2.0f * ((y + 0.5f) * invHeight)) * angle;
+
+    float3 dir = normalize(x * cross(cameraFront, cameraUp) + y * cameraUp + cameraFront);
+    Ray ray;
+    ray.origin = cameraPos;
+    ray.dir = dir;
+    return ray;
+}
+
+float3 sampleHemisphereCosine(float3 n, unsigned int* seed0, unsigned int* seed1)
+{
+    // cos(theta) = r0 = y
+    // cos^2(theta) + sin^2(theta) = 1 -> sin(theta) = srtf(1 - cos^2(theta)
+    float r0 = getRandom(seed0, seed1);
+    float r1 = getRandom(seed0, seed1);
+    float sinTheta = sqrt(1.0 - r0 * r0);
+    float phi = TWO_PI * r1;
+    float x = sinTheta * cos(phi);
+    float z = sinTheta * sin(phi);
+    float y = r0;
+
+    float3 nt = fabs(n.x) > fabs(n.y) ? (float3)(n.z, 0.0, -n.x)/sqrt(n.x*n.x + n.z*n.z) : (float3)(0.0, -n.z, n.y)/sqrt(n.y*n.y + n.z*n.z);
+    float3 nb = cross(nt, n);
+
+    float3 res = (float3)(
+            x * nb.x + y * n.x + z * nt.x,
+            x * nb.y + y * n.y + z * nt.y,
+            x * nb.z + y * n.z + z * nt.z);
+
+    return normalize(res);
+}
+
 float3 sampleDiffuse(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed0, unsigned int* seed1)
 {
     *wi = sampleHemisphereCosine(normal, seed0, seed1);
@@ -158,54 +207,43 @@ float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __g
     float3 beta = 1.0f;
 
 	Ray ray = *camray;
+	//return ray.origin;
 	for (int i = 0; i < 10; ++i)
     {
         IntersectData isect = intersectScene(&ray, nodes, tris);
 		
         if (!isect.hit)
         {
-			float3 unitDir = ray.dir;
-        	float t = 0.5f*(unitDir.y + 1.0f);
-        	return ((1.0f - t)*(float3)(1.0f, 1.0f, 1.0f) + t * (float3)(0.5f, 0.7f, 1.0f)) * 0.5f;
+            break;
         }
-
+        //return isect.normal;
 		__global Material* material = &materials[isect.object->mat];
-		radiance += beta * (material->emission) * 200.0f;
-		float3 wi;// = sampleHemisphereCosine(-isect.normal, seed0, seed1);
+
+		radiance += beta * (material->emission) * 50.0f;
 		float3 wo = -ray.dir;
+		float3 wi;
 		float pdf = 0.0f;
-        float3 f = sampleBrdf(wo, &wi, &pdf, -isect.normal, material, seed0, seed1);
+        float3 f = sampleBrdf(wo, &wi, &pdf, isect.normal, material, seed0, seed1);
+
         if (pdf <= 0.0f) break;
         float3 mul = f * dot(wi, isect.normal) / pdf;
         beta *= mul;
+
 		ray.dir = wi;
-		ray.origin = isect.pos + wi * 0.01f;
+		ray.origin = isect.pos + wi * 0.0001f;
+
+
+		// Russian Roulette
+		if(i > 3)
+        {
+            float r = getRandom(seed0, seed1);
+            float rr = fmin(1.0f, luminance(radiance));
+            if(r > rr)
+                break;
+            radiance /= rr;
+        }
     }
     return max(radiance, 0.0f);
-}
-
-Ray CreateRay(uint width, uint height, int coordX, int coordY, __constant Camera* cam)
-{
-	float3 cameraPos = cam->orig;
-	float3 cameraFront = cam->front;
-	float3 cameraUp = cam->up;
-
-    float invWidth = 1.0f / (float)(width), invHeight = 1.0f / (float)(height);
-    float aspectratio = (float)(width) / (float)(height);
-    float fov = 45.0f * 3.1415f / 180.0f;
-    float angle = tan(0.5f * fov);
-
-    float x = coordX - 0.5f;
-    float y = coordY - 0.5f;
-
-    x = (2.0f * ((x + 0.5f) * invWidth) - 1) * angle * aspectratio;
-    y = -(1.0f - 2.0f * ((y + 0.5f) * invHeight)) * angle;
-
-    float3 dir = normalize(x * cross(cameraFront, cameraUp) + y * cameraUp + cameraFront);
-    Ray ray;
-	ray.origin = cameraPos;
-	ray.dir = dir;
-    return ray;
 }
 
 __kernel void renderKernel(const int width, const int height, __constant Camera* cam, __global BVHNode* nodes, __global Triangle* tris, __global Material* materials, unsigned int frameCount, __global float3* output)

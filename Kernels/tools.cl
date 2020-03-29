@@ -46,7 +46,7 @@ bool intersectTriangle(Ray* ray, __global Triangle* triangle, IntersectData* ise
 
 	float t = dot(e2, q) * f;
 
-	if(t < isect->t)
+	if(t > 0.0f && t < isect->t)
 	{
 		isect->hit = true;
         isect->t = t;
@@ -54,8 +54,9 @@ bool intersectTriangle(Ray* ray, __global Triangle* triangle, IntersectData* ise
         isect->object = triangle;
         isect->normal = normalize(u * triangle->v1.normal + v * triangle->v2.normal + (1.0f - u - v) * triangle->v0.normal);
         isect->texcoord = u * triangle->v1.texcoord + v * triangle->v2.texcoord + (1.0f - u - v) * triangle->v0.texcoord;
+        return true;
 	}
-	return true;
+	return false;
 }
 
 
@@ -65,6 +66,7 @@ bool intersectTriangle(Ray* ray, __global Triangle* triangle, IntersectData* ise
 // max : 包围盒最大点
 bool intersectBBox(const float3 orig, const float3 dir, const float3 min, const float3 max) 
 {
+    return true;
 	float low = (min.x - orig.x)/dir.x;
 	float high = (max.x - orig.x)/dir.x;
 	float txmin =  fmin(low, high);
@@ -132,19 +134,6 @@ float3 reflect(float3 v, float3 n)
     return -v + 2.0f * dot(v, n) * n;
 }
 
-float3 sampleHemisphereCosine(float3 n, unsigned int* seed0, unsigned int* seed1)
-{
-    float phi = TWO_PI * getRandom(seed0, seed1);
-    float sinThetaSqr = getRandom(seed0, seed1);
-    float sinTheta = sqrt(sinThetaSqr);
-
-    float3 axis = fabs(n.x) > 0.001f ? (float3)(0.0f, 1.0f, 0.0f) : (float3)(1.0f, 0.0f, 0.0f);
-    float3 t = normalize(cross(axis, n));
-    float3 s = cross(n, t);
-
-    return normalize(s*cos(phi)*sinTheta + t*sin(phi)*sinTheta + n*sqrt(1.0f - sinThetaSqr));
-}
-
 float2 pointInHexagon(unsigned int* seed0, unsigned int* seed1)
 {
     float2 hexPoints[3] = { (float2)(-1.0f, 0.0f), (float2)(0.5f, 0.866f), (float2)(0.5f, -0.866f) };
@@ -176,16 +165,6 @@ float3 randomInUnitSphere(unsigned int* seed0, unsigned int* seed1)
     return p;
 }
 
-float3 randomUnitVector(unsigned int* seed0, unsigned int* seed1)
-{
-    float z = getRandom(seed0, seed1) * 2.0f - 1.0f;
-    float a = getRandom(seed0, seed1) * 2.0f * PI;
-    float r = sqrt(1.0f - z * z);
-    float x = r * cos(a);
-    float y = r * sin(a);
-    return (float3)(x, y, z);
-}
-
 float2 rejectionSampleDisk(unsigned int* seed0, unsigned int* seed1)
 {
 	float x,y;
@@ -201,17 +180,9 @@ bool sameHemisphere(float3 w, float3 wp)
 	return w.z * wp.z > 0.f;
 }
 
-float3 uniformSampleHemisphere(unsigned int* seed0, unsigned int* seed1)
+float luminance(float3 color)
 {
-	float ux = getRandom(seed0, seed1);
-	float uy = getRandom(seed0, seed1);
-	float z = ux;
-	float r = sqrt(1.0f - z*z);
-	float phi = 2*PI*uy;
-	float x = r * cos(phi);
-    float y = r * sin(phi);
-
-    return (float3)(x, y, z);
+    return color.x * 0.212671 + color.y * 0.715160 + color.z * 0.072169;
 }
 
 
