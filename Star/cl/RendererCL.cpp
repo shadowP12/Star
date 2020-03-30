@@ -270,7 +270,7 @@ void RendererCL::run()
     }
 
 	// 执行光追
-	mCore->queue.enqueueNDRangeKernel(mKernel, cl::NullRange, global, local);
+	mCore->queue.enqueueNDRangeKernel(mKernel, cl::NullRange, cl::NDRange(32 * divup(mWidth * mHeight,32)), cl::NDRange(32));
 
     // 累加结果
     mCore->queue.enqueueNDRangeKernel(mAccumulateKernel, cl::NullRange, global, local);

@@ -119,59 +119,33 @@ IntersectData intersectScene(Ray* ray, __global BVHNode* nodes, __global Triangl
 	return isect;
 }
 
-Ray genCameraRay(const int width, const int height, const int x_coord, const int y_coord, __constant Camera* cam)
+Ray createRay(uint width, uint height, float3 cameraPos, float3 cameraFront, float3 cameraUp, unsigned int* seed)
 {
-	// u v w
-	float3 w = normalize(cam->front);
-	float3 u = normalize(cross(cam->up, w));
-    float3 v = cross(w, u);
-	
-	float aspect = (float)(width) / (float)(height);
-	float theta = cam->params.x * PI / 180.0;
-    float halfHeight = tan(theta/2);
-    float halfWidth = aspect * halfHeight;
-	float3 origin = cam->orig + cam->front;
-	float3 lowerLeftCorner = origin - halfWidth*cam->params.w*u - halfHeight*cam->params.w*v - cam->params.w*w;
-	float3 horizontal = 2*halfWidth*cam->params.w*u;
-    float3 vertical = 2*halfHeight*cam->params.w*v;
-	float3 pixelPos = lowerLeftCorner + (float)x_coord*horizontal + (float)y_coord*vertical;
-	Ray ray;
-	ray.origin = cam->orig;
-	ray.dir = normalize(pixelPos - ray.origin);
-	
-	return ray;
-}
-
-Ray CreateRay(uint width, uint height, int coordX, int coordY, __constant Camera* cam)
-{
-    float3 cameraPos = cam->orig;
-    float3 cameraFront = cam->front;
-    float3 cameraUp = cam->up;
-
     float invWidth = 1.0f / (float)(width), invHeight = 1.0f / (float)(height);
     float aspectratio = (float)(width) / (float)(height);
     float fov = 45.0f * 3.1415f / 180.0f;
     float angle = tan(0.5f * fov);
 
-    float x = coordX - 0.5f;
-    float y = coordY - 0.5f;
+    float x = (float)(get_global_id(0) % width) + getRandomFloat(seed) - 0.5f;
+    float y = (float)(get_global_id(0) / width) + getRandomFloat(seed) - 0.5f;
 
     x = (2.0f * ((x + 0.5f) * invWidth) - 1) * angle * aspectratio;
     y = -(1.0f - 2.0f * ((y + 0.5f) * invHeight)) * angle;
 
     float3 dir = normalize(x * cross(cameraFront, cameraUp) + y * cameraUp + cameraFront);
+
     Ray ray;
     ray.origin = cameraPos;
     ray.dir = dir;
     return ray;
 }
 
-float3 sampleHemisphereCosine(float3 n, unsigned int* seed0, unsigned int* seed1)
+float3 sampleHemisphereCosine(float3 n, unsigned int* seed)
 {
     // cos(theta) = r0 = y
     // cos^2(theta) + sin^2(theta) = 1 -> sin(theta) = srtf(1 - cos^2(theta)
-    float r0 = getRandom(seed0, seed1);
-    float r1 = getRandom(seed0, seed1);
+    float r0 = getRandomFloat(seed);
+    float r1 = getRandomFloat(seed);
     float sinTheta = sqrt(1.0 - r0 * r0);
     float phi = TWO_PI * r1;
     float x = sinTheta * cos(phi);
@@ -189,19 +163,19 @@ float3 sampleHemisphereCosine(float3 n, unsigned int* seed0, unsigned int* seed1
     return normalize(res);
 }
 
-float3 sampleDiffuse(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed0, unsigned int* seed1)
+float3 sampleDiffuse(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed)
 {
-    *wi = sampleHemisphereCosine(normal, seed0, seed1);
+    *wi = sampleHemisphereCosine(normal, seed);
 	*pdf = dot(*wi, normal) * INV_PI;
     return material->baseColor * INV_PI;
 }
 
-float3 sampleBrdf(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed0, unsigned int* seed1)
+float3 sampleBrdf(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed)
 {
-	return sampleDiffuse(wo, wi, pdf, normal, material, seed0, seed1);
+	return sampleDiffuse(wo, wi, pdf, normal, material, seed);
 }
 
-float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __global Material* materials, unsigned int* seed0, unsigned int* seed1)
+float3 render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __global Material* materials, unsigned int* seed)
 {
 	float3 radiance = 0.0f;
     float3 beta = 1.0f;
@@ -216,14 +190,14 @@ float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __g
         {
             break;
         }
-        //return isect.normal;
+
 		__global Material* material = &materials[isect.object->mat];
 
 		radiance += beta * (material->emission) * 50.0f;
 		float3 wo = -ray.dir;
 		float3 wi;
 		float pdf = 0.0f;
-        float3 f = sampleBrdf(wo, &wi, &pdf, isect.normal, material, seed0, seed1);
+        float3 f = sampleBrdf(wo, &wi, &pdf, isect.normal, material, seed);
 
         if (pdf <= 0.0f) break;
         float3 mul = f * dot(wi, isect.normal) / pdf;
@@ -236,7 +210,7 @@ float3 Render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __g
 		// Russian Roulette
 		if(i > 3)
         {
-            float r = getRandom(seed0, seed1);
+            float r = getRandomFloat(seed);
             float rr = fmin(1.0f, luminance(radiance));
             if(r > rr)
                 break;
@@ -254,17 +228,14 @@ __kernel void renderKernel(const int width, const int height, __constant Camera*
 	light.color = (float3)(0.0f, 0.0f, 0.0f);
 	light.emission  = (float3)(9.0f, 8.0f, 7.0f);
 
-	unsigned int coordX = get_global_id(0);
-	unsigned int coordY = get_global_id(1);
-	unsigned int seed0 = coordX + hashUInt32(frameCount);
-	unsigned int seed1 = coordY + hashUInt32(frameCount);
+	unsigned int seed = get_global_id(0) + hashUInt32(frameCount);
 
-	Ray ray = CreateRay(width, height, coordX, coordY, cam);
+	Ray ray = createRay(width, height, cam->orig, cam->front, cam->up, &seed);
 	float3 finalcolor = 0.0f;
 	float invSamples = 1.0f / SAMPLES;
 	for (int i = 0; i < SAMPLES; ++i)
 	{
-		finalcolor += Render(&ray, nodes, tris, materials, &seed0, &seed1) * invSamples;
+		finalcolor += render(&ray, nodes, tris, materials, &seed) * invSamples;
 	}
 
 //	finalcolor = (float3)(clamp(finalcolor.x, 0.0f, 1.0f),
@@ -278,7 +249,7 @@ __kernel void renderKernel(const int width, const int height, __constant Camera*
 	// 	finalcolor = (float3)(1.0f, 1.0f, 1.0f);
 	// }
 
-    output[coordY * width + coordX] = finalcolor;
+    output[get_global_id(0)] = finalcolor;
 }
 
 __kernel void accumulate(__global float3* input, __global float3* output, uint width)

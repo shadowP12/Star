@@ -108,20 +108,15 @@ float getRandomFloat(unsigned int* seed)
     return (float)(*seed) * 2.3283064365386963e-10f;
 }
 
-float getRandom(unsigned int *seed0, unsigned int *seed1)
+float2 pointInHexagon(unsigned int* seed)
 {
-	*seed0 = 36969 * ((*seed0) & 65535) + ((*seed0) >> 16);
-	*seed1 = 18000 * ((*seed1) & 65535) + ((*seed1) >> 16);
-
-	unsigned int ires = ((*seed0) << 16) + (*seed1);
-
-	union {
-		float f;
-		unsigned int ui;
-	} res;
-
-	res.ui = (ires & 0x007fffff) | 0x40000000;
-	return (res.f - 2.0f) / 2.0f;
+    float2 hexPoints[3] = { (float2)(-1.0f, 0.0f), (float2)(0.5f, 0.866f), (float2)(0.5f, -0.866f) };
+    int x = floor(getRandomFloat(seed) * 3.0f);
+    float2 v1 = hexPoints[x];
+    float2 v2 = hexPoints[(x + 1) % 3];
+    float p1 = getRandomFloat(seed);
+    float p2 = getRandomFloat(seed);
+    return (float2)(p1 * v1.x + p2 * v2.x, p1 * v1.y + p2 * v2.y);
 }
 
 unsigned int hashUInt32(unsigned int x)
@@ -134,43 +129,32 @@ float3 reflect(float3 v, float3 n)
     return -v + 2.0f * dot(v, n) * n;
 }
 
-float2 pointInHexagon(unsigned int* seed0, unsigned int* seed1)
-{
-    float2 hexPoints[3] = { (float2)(-1.0f, 0.0f), (float2)(0.5f, 0.866f), (float2)(0.5f, -0.866f) };
-    int x = floor(getRandom(seed0, seed1) * 3.0f);
-    float2 v1 = hexPoints[x];
-    float2 v2 = hexPoints[(x + 1) % 3];
-    float p1 = getRandom(seed0, seed1);
-    float p2 = getRandom(seed0, seed1);
-    return (float2)(p1 * v1.x + p2 * v2.x, p1 * v1.y + p2 * v2.y);
-}
-
-float3 randomInUnitDisk(unsigned int* seed0, unsigned int* seed1)
+float3 randomInUnitDisk(unsigned int* seed)
 {
     float3 p;
     do
     {
-        p = 2.0f * (float3)(getRandom(seed0, seed1), getRandom(seed0, seed1), 0) - (float3)(1,1,0);
+        p = 2.0f * (float3)(getRandomFloat(seed), getRandomFloat(seed), 0) - (float3)(1,1,0);
     } while (dot(p,p) >= 1.0);
     return p;
 }
 
-float3 randomInUnitSphere(unsigned int* seed0, unsigned int* seed1)
+float3 randomInUnitSphere(unsigned int* seed)
 {
     float3 p;
     do
     {
-        p = 2.0f * (float3)(getRandom(seed0, seed1), getRandom(seed0, seed1), getRandom(seed0, seed1)) - (float3)(1,1,1);
+        p = 2.0f * (float3)(getRandomFloat(seed), getRandomFloat(seed), getRandomFloat(seed)) - (float3)(1,1,1);
     } while (dot(p,p) >= 1.0);
     return p;
 }
 
-float2 rejectionSampleDisk(unsigned int* seed0, unsigned int* seed1)
+float2 rejectionSampleDisk(unsigned int* seed)
 {
 	float x,y;
 	do {
-		x = getRandom(seed0, seed1);
-		y = getRandom(seed0, seed1);
+		x = getRandomFloat(seed);
+		y = getRandomFloat(seed);
 	} while (x * x + y * y > 1.0f);
 	return (float2)(x, y);
 }
