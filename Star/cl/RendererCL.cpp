@@ -47,11 +47,12 @@ void RendererCL::initCL(CLCore* core)
 {
 	mCore = core;
 	// create program
-	std::string path = "Kernels/base.cl";
+	std::string path = getCurrentPath() +  R"(\Kernels\Render.cl)";
+	std::string options = "-I " + getCurrentPath() +  R"(\Kernels)";
 	std::string source;
 	readFileData(path, source);
-	mProgram = cl::Program(mCore->context, source.c_str());
-	cl_int result = mProgram.build({ mCore->device }, "-I Kernels");
+	mProgram = cl::Program(mCore->context, source.c_str(), true);
+	cl_int result = mProgram.build({ mCore->device }, options.c_str());
 
     std::string buildLog = mProgram.getBuildInfo<CL_PROGRAM_BUILD_LOG>(mCore->device);
 
@@ -125,8 +126,8 @@ void RendererCL::initScene(BVH* bvh, std::vector<std::shared_ptr<Material>>& mat
 {
     for (int j = 0; j < mats.size(); ++j)
     {
-        printf("baseColor %f %f %f\n", mats[j]->baseColor.x, mats[j]->baseColor.y, mats[j]->baseColor.z);
-        printf("emissive %f %f %f\n", mats[j]->emissive.x, mats[j]->emissive.y, mats[j]->emissive.z);
+//        printf("baseColor %f %f %f\n", mats[j]->baseColor.x, mats[j]->baseColor.y, mats[j]->baseColor.z);
+//        printf("emissive %f %f %f\n", mats[j]->emissive.x, mats[j]->emissive.y, mats[j]->emissive.z);
     }
 	// 初始化相机
 	mCPUCamera.position = glm::vec3(0.0f, 1.54f, 3.14f);

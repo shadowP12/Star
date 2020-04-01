@@ -20,3 +20,11 @@ bool readFileData(std::string& file_path, std::string& out_data)
 	out_data = std::string((std::istreambuf_iterator<char>(*stream)), std::istreambuf_iterator<char>());
 	return true;
 }
+
+std::string getCurrentPath()
+{
+    char buffer[1024];
+    getcwd(buffer, 1024);
+    std::string path(buffer);
+    return path;
+}

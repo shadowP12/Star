@@ -8,6 +8,7 @@
 #include "InputSystem/Input.h"
 #include "Common/Window.h"
 #include "Math/GMath.h"
+#include "Tools/Tools.h"
 const unsigned int SCR_WIDTH = 512;
 const unsigned int SCR_HEIGHT = 512;
 
@@ -39,6 +40,8 @@ float getRandom(unsigned int *seed0, unsigned int *seed1)
 
 int main()
 {
+    // 禁止使用缓存
+    _putenv_s("CUDA_CACHE_DISABLE", "1");
     // test
 //    printf("cl_float %d\n", sizeof(cl_float));
 //    printf("cl_float3 %d\n", sizeof(cl_float3));
@@ -57,7 +60,9 @@ int main()
 	Window win(SCR_WIDTH, SCR_HEIGHT);
 	win.initCLCore(gCLCore);
 	std::shared_ptr<Scene> scene = std::make_shared<Scene>();
-	scene->load("Res/CornellBox.gltf");
+
+    std::string sceneFilePath = getCurrentPath() +  R"(\Res\CornellBox.gltf)";
+	scene->load(sceneFilePath);
 	scene->genPrimitives();
 	BVH* bvh = new BVH(scene->getPrimitives());
 	// renderer

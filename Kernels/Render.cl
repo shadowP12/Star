@@ -1,4 +1,4 @@
-#pragma OPENCL EXTENSION cl_nv_printf : enable
+
 #define MAX_RENDER_DIST 200000.0f
 #define PI 3.14159265359f
 #define TWO_PI 6.28318530718f
@@ -7,8 +7,8 @@
 __constant float EPSILON = 0.00003f;
 __constant int SAMPLES = 1;
 
-#include "types.cl"
-#include "tools.cl"
+#include "Types.cl"
+#include "Tools.cl"
 
 float intersectSphere(const Sphere* sphere, const Ray* ray)
 {
@@ -16,6 +16,7 @@ float intersectSphere(const Sphere* sphere, const Ray* ray)
 	float b = dot(rayToCenter, ray->dir);
 	float c = dot(rayToCenter, rayToCenter) - sphere->radius*sphere->radius;
 	float disc = b * b - c;
+
 
 	if (disc < 0.0f) return 0.0f;
 	else disc = sqrt(disc);
