@@ -91,23 +91,6 @@ bool intersectBBox(const float3 orig, const float3 dir, const float3 min, const 
 	return true;
 }
 
-float3 saturate(float3 value)
-{
-    return min(max(value, 0.0f), 1.0f);
-}
-
-float getRandomFloat(unsigned int* seed)
-{
-    *seed = (*seed ^ 61) ^ (*seed >> 16);
-    *seed = *seed + (*seed << 3);
-    *seed = *seed ^ (*seed >> 4);
-    *seed = *seed * 0x27d4eb2d;
-    *seed = *seed ^ (*seed >> 15);
-    *seed = 1103515245 * (*seed) + 12345;
-
-    return (float)(*seed) * 2.3283064365386963e-10f;
-}
-
 float2 pointInHexagon(unsigned int* seed)
 {
     float2 hexPoints[3] = { (float2)(-1.0f, 0.0f), (float2)(0.5f, 0.866f), (float2)(0.5f, -0.866f) };
@@ -158,16 +141,5 @@ float2 rejectionSampleDisk(unsigned int* seed)
 	} while (x * x + y * y > 1.0f);
 	return (float2)(x, y);
 }
-
-bool sameHemisphere(float3 w, float3 wp)
-{
-	return w.z * wp.z > 0.f;
-}
-
-float luminance(float3 color)
-{
-    return color.x * 0.212671 + color.y * 0.715160 + color.z * 0.072169;
-}
-
 
 

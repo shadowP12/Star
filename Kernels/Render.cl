@@ -1,13 +1,7 @@
-
-#define MAX_RENDER_DIST 200000.0f
-#define PI 3.14159265359f
-#define TWO_PI 6.28318530718f
-#define INV_PI 0.31830988618f
-#define INV_TWO_PI 0.15915494309f
-__constant float EPSILON = 0.00003f;
-__constant int SAMPLES = 1;
-
+#include "Common.cl"
 #include "Types.cl"
+#include "Sampling.cl"
+#include "Reflection.cl"
 #include "Tools.cl"
 
 float intersectSphere(const Sphere* sphere, const Ray* ray)
@@ -141,41 +135,6 @@ Ray createRay(uint width, uint height, float3 cameraPos, float3 cameraFront, flo
     return ray;
 }
 
-float3 sampleHemisphereCosine(float3 n, unsigned int* seed)
-{
-    // cos(theta) = r0 = y
-    // cos^2(theta) + sin^2(theta) = 1 -> sin(theta) = srtf(1 - cos^2(theta)
-    float r0 = getRandomFloat(seed);
-    float r1 = getRandomFloat(seed);
-    float sinTheta = sqrt(1.0 - r0 * r0);
-    float phi = TWO_PI * r1;
-    float x = sinTheta * cos(phi);
-    float z = sinTheta * sin(phi);
-    float y = r0;
-
-    float3 nt = fabs(n.x) > fabs(n.y) ? (float3)(n.z, 0.0, -n.x)/sqrt(n.x*n.x + n.z*n.z) : (float3)(0.0, -n.z, n.y)/sqrt(n.y*n.y + n.z*n.z);
-    float3 nb = cross(nt, n);
-
-    float3 res = (float3)(
-            x * nb.x + y * n.x + z * nt.x,
-            x * nb.y + y * n.y + z * nt.y,
-            x * nb.z + y * n.z + z * nt.z);
-
-    return normalize(res);
-}
-
-float3 sampleDiffuse(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed)
-{
-    *wi = sampleHemisphereCosine(normal, seed);
-	*pdf = dot(*wi, normal) * INV_PI;
-    return material->baseColor * INV_PI;
-}
-
-float3 sampleBrdf(float3 wo, float3* wi, float* pdf, float3 normal, __global Material* material, unsigned int* seed)
-{
-	return sampleDiffuse(wo, wi, pdf, normal, material, seed);
-}
-
 float3 render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __global Material* materials, unsigned int* seed)
 {
 	float3 radiance = 0.0f;
@@ -191,22 +150,26 @@ float3 render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __g
         {
             break;
         }
-
 		__global Material* material = &materials[isect.object->mat];
 
+        // Local Coordinate
+        float3 n = isect.normal;
+        float3 t = fabs(n.x) > fabs(n.y) ? (float3)(n.z, 0.0, -n.x)/sqrt(n.x*n.x + n.z*n.z) : (float3)(0.0, -n.z, n.y)/sqrt(n.y*n.y + n.z*n.z);
+        float3 b = cross(t, n);
+
 		radiance += beta * (material->emission) * 50.0f;
-		float3 wo = -ray.dir;
+		//float3 wo = -ray.dir;
+		float3 wo = worldToLocal(b , t, n, -ray.dir);
 		float3 wi;
 		float pdf = 0.0f;
-        float3 f = sampleBrdf(wo, &wi, &pdf, isect.normal, material, seed);
-
+		float3 f = sampleLambertianReflection(material->baseColor, wo, &wi, &pdf, seed);
         if (pdf <= 0.0f) break;
-        float3 mul = f * dot(wi, isect.normal) / pdf;
+        wi = localToWorld(b, t, n, wi);
+        float3 mul = f * dot(wi, n) / pdf;
         beta *= mul;
 
 		ray.dir = wi;
 		ray.origin = isect.pos + wi * 0.0001f;
-
 
 		// Russian Roulette
 		if(i > 3)
@@ -238,10 +201,6 @@ __kernel void renderKernel(const int width, const int height, __constant Camera*
 	{
 		finalcolor += render(&ray, nodes, tris, materials, &seed) * invSamples;
 	}
-
-//	finalcolor = (float3)(clamp(finalcolor.x, 0.0f, 1.0f),
-//						  clamp(finalcolor.y, 0.0f, 1.0f),
-//						  clamp(finalcolor.z, 0.0f, 1.0f));
 
 	// float t = intersectSphere(&light, &ray);
 	// IntersectData isect = intersectScene(&ray, nodes, tris);
