@@ -13,6 +13,8 @@ struct Material
 {
     glm::vec3 baseColor;
     glm::vec3 emissive;
+    float metallic;
+    float roughness;
 };
 
 struct TriangleSubMesh

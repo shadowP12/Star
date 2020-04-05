@@ -197,6 +197,8 @@ void RendererCL::initScene(BVH* bvh, std::vector<std::shared_ptr<Material>>& mat
         CLMaterial mat;
         mat.baseColor = { {mats[i]->baseColor[0], mats[i]->baseColor[1], mats[i]->baseColor[2]} };
         mat.emissive = { {mats[i]->emissive[0], mats[i]->emissive[1], mats[i]->emissive[2]} };
+        mat.metallic = mats[i]->metallic;
+        mat.roughness = mats[i]->roughness;
         mMaterials->pushBack(mat);
     }
 

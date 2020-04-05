@@ -59,7 +59,6 @@ bool intersectTriangle(Ray* ray, __global Triangle* triangle, IntersectData* ise
 	return false;
 }
 
-
 // orig : 光线的起点
 // dir : 光线的方向 
 // min : 包围盒最小点
@@ -105,11 +104,6 @@ float2 pointInHexagon(unsigned int* seed)
 unsigned int hashUInt32(unsigned int x)
 {
     return 1103515245 * x + 12345;
-}
-
-float3 reflect(float3 v, float3 n)
-{
-    return -v + 2.0f * dot(v, n) * n;
 }
 
 float3 randomInUnitDisk(unsigned int* seed)

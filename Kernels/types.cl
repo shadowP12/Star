@@ -37,6 +37,8 @@ typedef struct Material
 {
     float3 baseColor;
     float3 emission;
+    float metallic;
+    float roughness;
 } Material;
 
 typedef struct Triangle{

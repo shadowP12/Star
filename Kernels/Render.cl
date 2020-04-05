@@ -162,7 +162,20 @@ float3 render(Ray* camray, __global BVHNode* nodes, __global Triangle* tris, __g
 		float3 wo = worldToLocal(b , t, n, -ray.dir);
 		float3 wi;
 		float pdf = 0.0f;
-		float3 f = sampleLambertianReflection(material->baseColor, wo, &wi, &pdf, seed);
+        float3 f;
+		if(getRandomFloat(seed) < 0.5f)
+		{
+		    f = sampleLambertianReflection(material->baseColor, wo, &wi, &pdf, seed);
+		    f *= (1.0f - material->metallic) * 2.0f;
+		}
+		else
+		{
+            f = sampleMicrofacetReflection(material->baseColor, material->roughness, wo, &wi, &pdf, seed);
+            f *= material->metallic * 2.0f;
+		}
+
+		//float3 f = sampleLambertianReflection(material->baseColor, wo, &wi, &pdf, seed);
+		//float3 f = sampleMicrofacetReflection(material->baseColor, material->roughness, wo, &wi, &pdf, seed);
         if (pdf <= 0.0f) break;
         wi = localToWorld(b, t, n, wi);
         float3 mul = f * dot(wi, n) / pdf;

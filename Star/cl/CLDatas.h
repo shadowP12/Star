@@ -73,6 +73,9 @@ struct CLMaterial
 {
     cl_float3 baseColor;
     cl_float3 emissive;
+    cl_float metallic;
+    cl_float roughness;
+    cl_int pad[2];
 };
 
 RC_NAMESPACE_END

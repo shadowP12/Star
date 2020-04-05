@@ -127,6 +127,9 @@ std::shared_ptr<TriangleMesh> loadMesh(cgltf_mesh* mesh, std::vector<std::shared
 		mat->baseColor = glm::vec3(primitive->material->pbr_metallic_roughness.base_color_factor[0],
                                    primitive->material->pbr_metallic_roughness.base_color_factor[1],
                                    primitive->material->pbr_metallic_roughness.base_color_factor[2]);
+		mat->metallic = primitive->material->pbr_metallic_roughness.metallic_factor;
+		mat->roughness = primitive->material->pbr_metallic_roughness.roughness_factor;
+
 		materials.push_back(mat);
 		TriangleSubMesh subMesh;
         subMesh.materialID = materials.size() - 1;
