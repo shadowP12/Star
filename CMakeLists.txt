@@ -3,6 +3,8 @@ project(star)
 
 set(CMAKE_CXX_STANDARD 14)
 
+add_definitions(-D NOMINMAX)
+
 include_directories(ThirdParty/glm/include)
 include_directories(ThirdParty/glfw/include)
 include_directories(ThirdParty/stb)

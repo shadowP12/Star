@@ -5,8 +5,23 @@
 #include <sstream>
 #include "FileUtils.h"
 #include "RenderUtils.h"
+#include <glm/glm.hpp>
 
 #define ENABLE_VALIDATION_LAYERS 1
+
+static float quadVertices[] =
+        {
+                1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
+                -1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
+                -1.0f,  1.0f, 0.0f, 0.0f, 1.0f
+        };
+
+static unsigned int quadIndices[] =
+        {
+                0, 1, 3,
+                1, 2, 3
+        };
 
 static void resizeCallback(GLFWwindow *window, int width, int height);
 static void cursorPosCallback(GLFWwindow * window, double xPos, double yPos);
@@ -369,6 +384,8 @@ Renderer::~Renderer()
     vkDestroyRenderPass(mDevice, mDisplayRenderPass, nullptr);
     vkDestroyPipeline(mDevice, mDisplayPipeline, nullptr);
     vkDestroyPipelineLayout(mDevice, mDisplayPipelineLayout, nullptr);
+    destroyBuffer(mQuadVertexBuffer);
+    destroyBuffer(mQuadIndexBuffer);
     vkDestroyDevice(mDevice, nullptr);
 #if ENABLE_VALIDATION_LAYERS
     auto vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(mInstance, "vkDestroyDebugReportCallbackEXT");
@@ -517,10 +534,28 @@ void Renderer::initRenderer()
     shaderStages.push_back(vertShaderStageInfo);
     shaderStages.push_back(fragShaderStageInfo);
 
+    VkVertexInputBindingDescription bindingDescription{};
+    bindingDescription.binding = 0;
+    bindingDescription.stride = 20;
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    VkVertexInputAttributeDescription attributeDescriptions[2];
+    attributeDescriptions[0].binding = 0;
+    attributeDescriptions[0].location = 0;
+    attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[0].offset = 0;
+
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[1].offset = 12;
+
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.vertexAttributeDescriptionCount = 2;
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -607,6 +642,14 @@ void Renderer::initRenderer()
 
     vkDestroyShaderModule(mDevice, fragShaderModule, nullptr);
     vkDestroyShaderModule(mDevice, vertShaderModule, nullptr);
+
+    // load buffer
+    mQuadVertexBuffer = createBuffer(20 * sizeof(float),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    mQuadIndexBuffer = createBuffer(6 * sizeof(unsigned int),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
 void Renderer::run()
@@ -669,6 +712,77 @@ VkShaderModule Renderer::createShader(int type, const std::string& filePath, con
     }
 
     return shaderModule;
+}
+
+uint32_t Renderer::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+{
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(mGPU, &memProperties);
+
+    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            return i;
+        }
+    }
+
+    throw std::runtime_error("failed to find suitable memory type!");
+}
+
+Buffer* Renderer::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties)
+{
+    Buffer* buffer = new Buffer();
+    VkBufferCreateInfo bufferInfo{};
+    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferInfo.size = size;
+    bufferInfo.usage = usage;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateBuffer(mDevice, &bufferInfo, nullptr, &buffer->buffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create buffer!");
+    }
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(mDevice, buffer->buffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, properties);
+
+    if (vkAllocateMemory(mDevice, &allocInfo, nullptr, &buffer->memory) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to allocate buffer memory!");
+    }
+
+    vkBindBufferMemory(mDevice, buffer->buffer, buffer->memory, 0);
+    return buffer;
+}
+
+void Renderer::destroyBuffer(Buffer *buffer)
+{
+    if(buffer)
+    {
+        vkDestroyBuffer(mDevice, buffer->buffer, nullptr);
+        vkFreeMemory(mDevice, buffer->memory, nullptr);
+        delete buffer;
+    }
+}
+
+void Renderer::readData(Buffer* buffer, uint32_t offset, uint32_t size, void * dest)
+{
+    void* data;
+    vkMapMemory(mDevice, buffer->memory, offset, size, 0, &data);
+    memcpy(dest, data, static_cast<size_t>(size));
+    vkUnmapMemory(mDevice, buffer->memory);
+}
+
+void Renderer::writeData(Buffer* buffer, uint32_t offset, uint32_t size, void * source)
+{
+    void *data;
+    vkMapMemory(mDevice, buffer->memory, offset, size, 0, &data);
+    memcpy(data, source, static_cast<size_t>(size));
+    vkUnmapMemory(mDevice, buffer->memory);
 }
 
 void resizeCallback(GLFWwindow * window, int width, int height)

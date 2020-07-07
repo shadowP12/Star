@@ -17,6 +17,15 @@ struct SwapChainSupportDetails
     VkPresentModeKHR presentMode;
 };
 
+class Buffer
+{
+public:
+    Buffer(){}
+    ~Buffer(){}
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+};
+
 class Renderer
 {
 public:
@@ -30,6 +39,13 @@ private:
     VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
     VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
     VkShaderModule createShader(int type, const std::string& filePath, const std::string& incDir = "");
+    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+    // buffer
+    Buffer* createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+    void destroyBuffer(Buffer* buffer);
+    void readData(Buffer* buffer, uint32_t offset, uint32_t size, void * dest);
+    void writeData(Buffer* buffer, uint32_t offset, uint32_t size, void * source);
+
 private:
     VkInstance mInstance;
     VkDebugReportCallbackEXT mDebugCallback = VK_NULL_HANDLE;
@@ -49,6 +65,8 @@ private:
     VkRenderPass mDisplayRenderPass = VK_NULL_HANDLE;
     VkPipeline mDisplayPipeline = VK_NULL_HANDLE;
     VkPipelineLayout mDisplayPipelineLayout = VK_NULL_HANDLE;
+    Buffer* mQuadVertexBuffer = nullptr;
+    Buffer* mQuadIndexBuffer = nullptr;
     GLFWwindow* mWindow;
     int mWidth;
     int mHeight;
