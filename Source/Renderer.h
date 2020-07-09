@@ -26,6 +26,15 @@ public:
     VkDeviceMemory memory = VK_NULL_HANDLE;
 };
 
+class CommandBuffer
+{
+public:
+    CommandBuffer(){}
+    ~CommandBuffer(){}
+    VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+    VkFence fence = VK_NULL_HANDLE;
+};
+
 class Renderer
 {
 public:
@@ -45,7 +54,10 @@ private:
     void destroyBuffer(Buffer* buffer);
     void readData(Buffer* buffer, uint32_t offset, uint32_t size, void * dest);
     void writeData(Buffer* buffer, uint32_t offset, uint32_t size, void * source);
-
+    // command buffer
+    CommandBuffer* getActiveCommandBuffer();
+    void destroyCommandBuffer(CommandBuffer* commandBuffer);
+    bool checkCommandBufferState(CommandBuffer* commandBuffer);
 private:
     VkInstance mInstance;
     VkDebugReportCallbackEXT mDebugCallback = VK_NULL_HANDLE;
@@ -57,6 +69,8 @@ private:
     VkQueue mGraphicsQueue;
     VkQueue mComputeQueue;
     VkQueue mTransferQueue;
+    VkCommandPool mCommandPool = VK_NULL_HANDLE;
+    std::vector<CommandBuffer*> mCommandBuffers;
     VkSurfaceKHR mSurface = VK_NULL_HANDLE;
     VkSwapchainKHR mSwapChain = VK_NULL_HANDLE;
     std::vector<VkImageView> mSwapChainImageViews;

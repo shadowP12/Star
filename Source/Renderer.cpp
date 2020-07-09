@@ -279,6 +279,17 @@ Renderer::Renderer(int width, int height)
     vkGetDeviceQueue(mDevice, computeFamily, 0, &mComputeQueue);
     vkGetDeviceQueue(mDevice, transferFamily, 0, &mTransferQueue);
 
+    // create cmdbuf pool
+    VkCommandPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolInfo.queueFamilyIndex = graphicsFamily;
+    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+    if (vkCreateCommandPool(mDevice, &poolInfo, nullptr, &mCommandPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create graphics command pool!");
+    }
+
     // init window
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -386,6 +397,12 @@ Renderer::~Renderer()
     vkDestroyPipelineLayout(mDevice, mDisplayPipelineLayout, nullptr);
     destroyBuffer(mQuadVertexBuffer);
     destroyBuffer(mQuadIndexBuffer);
+    for (int i = 0; i < mCommandBuffers.size(); ++i)
+    {
+        destroyCommandBuffer(mCommandBuffers[i]);
+    }
+    mCommandBuffers.clear();
+    vkDestroyCommandPool(mDevice, mCommandPool, nullptr);
     vkDestroyDevice(mDevice, nullptr);
 #if ENABLE_VALIDATION_LAYERS
     auto vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(mInstance, "vkDestroyDebugReportCallbackEXT");
@@ -647,9 +664,12 @@ void Renderer::initRenderer()
     mQuadVertexBuffer = createBuffer(20 * sizeof(float),
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    writeData(mQuadVertexBuffer, 0, 20 * sizeof(float), quadVertices);
+
     mQuadIndexBuffer = createBuffer(6 * sizeof(unsigned int),
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    writeData(mQuadIndexBuffer, 0, 6 * sizeof(unsigned int), quadIndices);
 }
 
 void Renderer::run()
@@ -783,6 +803,58 @@ void Renderer::writeData(Buffer* buffer, uint32_t offset, uint32_t size, void * 
     vkMapMemory(mDevice, buffer->memory, offset, size, 0, &data);
     memcpy(data, source, static_cast<size_t>(size));
     vkUnmapMemory(mDevice, buffer->memory);
+}
+
+CommandBuffer* Renderer::getActiveCommandBuffer()
+{
+    CommandBuffer* cmdBuffer = nullptr;
+    for (int i = 0; i < mCommandBuffers.size(); ++i)
+    {
+        if(checkCommandBufferState(mCommandBuffers[i]))
+        {
+            return mCommandBuffers[i];
+        }
+    }
+    cmdBuffer = new CommandBuffer();
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = mCommandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+    if (vkAllocateCommandBuffers(mDevice, &allocInfo, &cmdBuffer->commandBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to allocate command buffers!");
+    }
+
+    VkFenceCreateInfo fenceInfo = {};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+    if (vkCreateFence(mDevice, &fenceInfo, nullptr, &cmdBuffer->fence) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create fence!");
+    }
+    mCommandBuffers.push_back(cmdBuffer);
+    return cmdBuffer;
+}
+
+bool Renderer::checkCommandBufferState(CommandBuffer* commandBuffer)
+{
+    if(vkGetFenceStatus(mDevice, commandBuffer->fence) == VK_SUCCESS)
+    {
+        vkResetCommandBuffer(commandBuffer->commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+        return true;
+    }
+    return false;
+}
+
+void Renderer::destroyCommandBuffer(CommandBuffer* commandBuffer)
+{
+    if(commandBuffer)
+    {
+        vkDestroyFence(mDevice, commandBuffer->fence, nullptr);
+        vkFreeCommandBuffers(mDevice, mCommandPool, 1, &commandBuffer->commandBuffer);
+        delete commandBuffer;
+    }
 }
 
 void resizeCallback(GLFWwindow * window, int width, int height)
