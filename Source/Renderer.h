@@ -79,6 +79,8 @@ private:
     VkRenderPass mDisplayRenderPass = VK_NULL_HANDLE;
     VkPipeline mDisplayPipeline = VK_NULL_HANDLE;
     VkPipelineLayout mDisplayPipelineLayout = VK_NULL_HANDLE;
+    VkSemaphore mImageAvailableSemaphore = VK_NULL_HANDLE;
+    VkSemaphore mRenderFinishedSemaphore = VK_NULL_HANDLE;
     Buffer* mQuadVertexBuffer = nullptr;
     Buffer* mQuadIndexBuffer = nullptr;
     GLFWwindow* mWindow;
