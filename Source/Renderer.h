@@ -17,20 +17,23 @@ struct SwapChainSupportDetails
     VkPresentModeKHR presentMode;
 };
 
-class Buffer
+struct Buffer
 {
-public:
-    Buffer(){}
-    ~Buffer(){}
     VkBuffer buffer = VK_NULL_HANDLE;
     VkDeviceMemory memory = VK_NULL_HANDLE;
 };
 
-class CommandBuffer
+struct Texture
 {
-public:
-    CommandBuffer(){}
-    ~CommandBuffer(){}
+    VkImage image = VK_NULL_HANDLE;
+    VkImage imageView = VK_NULL_HANDLE;
+    VkImageLayout imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkSampler sampler = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+};
+
+struct CommandBuffer
+{
     VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
     VkFence fence = VK_NULL_HANDLE;
 };
@@ -54,6 +57,12 @@ private:
     void destroyBuffer(Buffer* buffer);
     void readData(Buffer* buffer, uint32_t offset, uint32_t size, void * dest);
     void writeData(Buffer* buffer, uint32_t offset, uint32_t size, void * source);
+    // texture
+    Texture* createTexture(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
+    void destroyTexture(Texture* texture);
+    void transitionImageLayout(Texture* texture, VkImageLayout oldLayout, VkImageLayout newLayout,
+            VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
     // command buffer
     CommandBuffer* getActiveCommandBuffer();
     void destroyCommandBuffer(CommandBuffer* commandBuffer);
