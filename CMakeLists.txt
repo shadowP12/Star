@@ -11,6 +11,7 @@ include_directories(ThirdParty/stb)
 include_directories(ThirdParty/vulkan/include)
 include_directories(ThirdParty/glslang/include)
 include_directories(ThirdParty/spirv_cross/include)
+include_directories(ThirdParty/cgltf/include)
 include_directories(Source)
 
 include(Source/Sources.cmake)
