@@ -78,6 +78,7 @@ private:
     VkQueue mGraphicsQueue;
     VkQueue mComputeQueue;
     VkQueue mTransferQueue;
+    VkDescriptorPool mDescriptorPool = VK_NULL_HANDLE;
     VkCommandPool mCommandPool = VK_NULL_HANDLE;
     std::vector<CommandBuffer*> mCommandBuffers;
     VkSurfaceKHR mSurface = VK_NULL_HANDLE;
@@ -86,10 +87,23 @@ private:
     std::vector<VkFramebuffer> mSwapChainFramebuffers;
     SwapChainSupportDetails mSwapChainSupport;
     VkRenderPass mDisplayRenderPass = VK_NULL_HANDLE;
+    /*
+     * display pipeline params
+     */
     VkPipeline mDisplayPipeline = VK_NULL_HANDLE;
     VkPipelineLayout mDisplayPipelineLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout mDisplayDescSetLayout = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> mDisplayDescSets;
+    /*
+     * accumulate pipeline params
+     */
+    VkPipeline mAccumulatePipeline = VK_NULL_HANDLE;
+    VkPipelineLayout mAccumulatePipelineLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout mAccumulateDescSetLayout = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> mAccumulateDescSets;
     VkSemaphore mImageAvailableSemaphore = VK_NULL_HANDLE;
     VkSemaphore mRenderFinishedSemaphore = VK_NULL_HANDLE;
+    Texture* mRenderTargetTexture = nullptr;
     Buffer* mQuadVertexBuffer = nullptr;
     Buffer* mQuadIndexBuffer = nullptr;
     GLFWwindow* mWindow;
