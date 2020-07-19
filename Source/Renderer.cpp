@@ -463,8 +463,13 @@ Renderer::~Renderer()
     vkDestroyPipelineLayout(mDevice, mAccumulatePipelineLayout, nullptr);
     vkDestroyDescriptorSetLayout(mDevice, mAccumulateDescSetLayout, nullptr);
 
+    vkDestroyPipeline(mDevice, mTracePipeline, nullptr);
+    vkDestroyPipelineLayout(mDevice, mTracePipelineLayout, nullptr);
+    vkDestroyDescriptorSetLayout(mDevice, mTraceDescSetLayout, nullptr);
+
     destroyBuffer(mQuadVertexBuffer);
     destroyBuffer(mQuadIndexBuffer);
+    destroyBuffer(mTargetBuffer);
     destroyTexture(mRenderTargetTexture);
     for (int i = 0; i < mCommandBuffers.size(); ++i)
     {
@@ -609,6 +614,10 @@ void Renderer::initRenderer()
                                     VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     writeData(mQuadIndexBuffer, 0, 6 * sizeof(unsigned int), quadIndices);
+
+    mTargetBuffer = createBuffer(mWidth * mHeight * 3 * sizeof(float),
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     // load texture
     mRenderTargetTexture = createTexture(mWidth, mHeight, VK_FORMAT_R8G8B8A8_UNORM,
@@ -793,17 +802,30 @@ void Renderer::initRenderer()
 
     // create compute pipeline
     {
-        VkDescriptorSetLayoutBinding accumLayoutBinding{};
-        accumLayoutBinding.binding = 0;
-        accumLayoutBinding.descriptorCount = 1;
-        accumLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        accumLayoutBinding.pImmutableSamplers = nullptr;
-        accumLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
+        {
+            VkDescriptorSetLayoutBinding layoutBinding = {};
+            layoutBinding.binding = 0;
+            layoutBinding.descriptorCount = 1;
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            layoutBinding.pImmutableSamplers = nullptr;
+            layoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            layoutBindings.push_back(layoutBinding);
+        }
+        {
+            VkDescriptorSetLayoutBinding layoutBinding = {};
+            layoutBinding.binding = 1;
+            layoutBinding.descriptorCount = 1;
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            layoutBinding.pImmutableSamplers = nullptr;
+            layoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            layoutBindings.push_back(layoutBinding);
+        }
 
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = 1;
-        layoutInfo.pBindings = &accumLayoutBinding;
+        layoutInfo.bindingCount = layoutBindings.size();
+        layoutInfo.pBindings = layoutBindings.data();
 
         if (vkCreateDescriptorSetLayout(mDevice, &layoutInfo, nullptr, &mAccumulateDescSetLayout) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor set layout!");
@@ -819,20 +841,37 @@ void Renderer::initRenderer()
             throw std::runtime_error("failed to allocate descriptor sets!");
         }
 
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = mTargetBuffer->buffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = mWidth * mHeight * 3 * sizeof(float);
+
         VkDescriptorImageInfo imageInfo{};
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
         imageInfo.imageView = mRenderTargetTexture->imageView;
         imageInfo.sampler = mRenderTargetTexture->sampler;
 
         std::vector<VkWriteDescriptorSet> descriptorWrites;
-        VkWriteDescriptorSet descriptorWrite = {};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = mAccumulateDescSets[0];
-        descriptorWrite.dstBinding = 0;
-        descriptorWrite.pImageInfo = &imageInfo;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrites.push_back(descriptorWrite);
+        {
+            VkWriteDescriptorSet descriptorWrite = {};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = mAccumulateDescSets[0];
+            descriptorWrite.dstBinding = 0;
+            descriptorWrite.pBufferInfo  = &bufferInfo;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrites.push_back(descriptorWrite);
+        }
+        {
+            VkWriteDescriptorSet descriptorWrite = {};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = mAccumulateDescSets[0];
+            descriptorWrite.dstBinding = 1;
+            descriptorWrite.pImageInfo = &imageInfo;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrites.push_back(descriptorWrite);
+        }
 
         vkUpdateDescriptorSets(mDevice, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 
@@ -858,6 +897,72 @@ void Renderer::initRenderer()
         vkCreateComputePipelines(mDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &mAccumulatePipeline);
         vkDestroyShaderModule(mDevice, shaderModule, nullptr);
     }
+    {
+        VkDescriptorSetLayoutBinding traceLayoutBinding{};
+        traceLayoutBinding.binding = 0;
+        traceLayoutBinding.descriptorCount = 1;
+        traceLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        traceLayoutBinding.pImmutableSamplers = nullptr;
+        traceLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = 1;
+        layoutInfo.pBindings = &traceLayoutBinding;
+
+        if (vkCreateDescriptorSetLayout(mDevice, &layoutInfo, nullptr, &mTraceDescSetLayout) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor set layout!");
+        }
+
+        mTraceDescSets.resize(1);
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = mDescriptorPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &mTraceDescSetLayout;
+        if (vkAllocateDescriptorSets(mDevice, &allocInfo, mTraceDescSets.data()) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate descriptor sets!");
+        }
+
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = mTargetBuffer->buffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = mWidth * mHeight * 3 * sizeof(float);
+
+        std::vector<VkWriteDescriptorSet> descriptorWrites;
+        VkWriteDescriptorSet descriptorWrite = {};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = mTraceDescSets[0];
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.pBufferInfo  = &bufferInfo;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrites.push_back(descriptorWrite);
+
+        vkUpdateDescriptorSets(mDevice, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
+
+        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
+        pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelineLayoutCreateInfo.setLayoutCount = 1;
+        pipelineLayoutCreateInfo.pSetLayouts = &mTraceDescSetLayout;
+        vkCreatePipelineLayout(mDevice, &pipelineLayoutCreateInfo, nullptr, &mTracePipelineLayout);
+
+        VkShaderModule shaderModule = createShader(2, "./Resources/Shaders/trace.comp");
+        VkPipelineShaderStageCreateInfo shaderStageInfo{};
+        shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        shaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+        shaderStageInfo.module = shaderModule;
+        shaderStageInfo.pName = "main";
+
+        VkComputePipelineCreateInfo pipelineCreateInfo {};
+        pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        pipelineCreateInfo.layout = mTracePipelineLayout;
+        pipelineCreateInfo.flags = 0;
+        pipelineCreateInfo.stage = shaderStageInfo;
+
+        vkCreateComputePipelines(mDevice, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &mTracePipeline);
+        vkDestroyShaderModule(mDevice, shaderModule, nullptr);
+    }
 }
 
 void Renderer::run()
@@ -875,9 +980,14 @@ void Renderer::run()
             if (vkBeginCommandBuffer(displayCmdBuf->commandBuffer, &beginInfo) != VK_SUCCESS) {
                 throw std::runtime_error("failed to begin recording command buffer!");
             }
-            // compute
+            // trace
+            vkCmdBindPipeline(displayCmdBuf->commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, mTracePipeline);
+            vkCmdBindDescriptorSets(displayCmdBuf->commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, mTracePipelineLayout, 0, mTraceDescSets.size(), mTraceDescSets.data(), 0, 0);
+            vkCmdDispatch(displayCmdBuf->commandBuffer, mWidth / 16, mHeight / 16, 1);
+
+            // accm
             vkCmdBindPipeline(displayCmdBuf->commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, mAccumulatePipeline);
-            vkCmdBindDescriptorSets(displayCmdBuf->commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, mAccumulatePipelineLayout, 0, 1, mAccumulateDescSets.data(), 0, 0);
+            vkCmdBindDescriptorSets(displayCmdBuf->commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, mAccumulatePipelineLayout, 0, mAccumulateDescSets.size(), mAccumulateDescSets.data(), 0, 0);
             vkCmdDispatch(displayCmdBuf->commandBuffer, mWidth / 16, mHeight / 16, 1);
 
             // display

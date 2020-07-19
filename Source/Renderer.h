@@ -101,12 +101,21 @@ private:
     VkPipelineLayout mAccumulatePipelineLayout = VK_NULL_HANDLE;
     VkDescriptorSetLayout mAccumulateDescSetLayout = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> mAccumulateDescSets;
+    /*
+     * trace pipeline params
+     */
+    VkPipeline mTracePipeline = VK_NULL_HANDLE;
+    VkPipelineLayout mTracePipelineLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout mTraceDescSetLayout = VK_NULL_HANDLE;
+    std::vector<VkDescriptorSet> mTraceDescSets;
     VkSemaphore mImageAvailableSemaphore = VK_NULL_HANDLE;
     VkSemaphore mRenderFinishedSemaphore = VK_NULL_HANDLE;
     Texture* mRenderTargetTexture = nullptr;
     Buffer* mQuadVertexBuffer = nullptr;
     Buffer* mQuadIndexBuffer = nullptr;
+    Buffer* mTargetBuffer = nullptr;
     GLFWwindow* mWindow;
     int mWidth;
     int mHeight;
+    int mSamplerCount;
 };

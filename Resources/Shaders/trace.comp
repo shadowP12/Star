@@ -5,11 +5,9 @@ layout(std140, binding = 0) buffer targetBuffer
 {
     vec3 pixels[ ];
 };
-layout (binding = 1, rgba8) uniform image2D resultImage;
 
 void main()
 {
     int index = int(gl_GlobalInvocationID);
-    vec4 res = vec4(pixels[index], 1.0);
-    imageStore(resultImage, ivec2(gl_GlobalInvocationID.xy), res);
+    pixels[index] = vec3(0.3);
 }
