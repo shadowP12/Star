@@ -8,7 +8,7 @@ int main() {
     SceneData* sceneData = loadScene("./Resources/Scenes/CornellBox.gltf");
     BVH* bvh = new BVH(sceneData->triangles);
     Renderer* renderer = new Renderer(512, 512);
-    renderer->initRenderer();
+    renderer->initRenderer(bvh, sceneData->materials);
     renderer->run();
     delete renderer;
     delete bvh;

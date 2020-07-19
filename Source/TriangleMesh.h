@@ -21,6 +21,7 @@ private:
     int mVertexIndices[3];
     glm::vec3 mNormal;
     glm::mat4 mObjectToWorld, mWorldToObject;
+    uint32_t mGlobalIndex;
 };
 
 struct Vertex

@@ -4,7 +4,9 @@
 #include <map>
 #include <sstream>
 #include "FileUtils.h"
+#include "TriangleMesh.h"
 #include "RenderUtils.h"
+#include "BVH.h"
 #include <glm/glm.hpp>
 
 #define ENABLE_VALIDATION_LAYERS 1
@@ -22,12 +24,17 @@ static unsigned int quadIndices[] =
                 0, 1, 3,
                 1, 2, 3
         };
-
+static float gMouseScrollWheel;
+static float gMousePosition[2];
+static float gMouseLastPosition[2];
+static bool gMouseButtonHeld[3];
+static bool gMouseButtonDown[3];
+static bool gMouseButtonUp[3];
+Camera* gCamera = nullptr;
 static void resizeCallback(GLFWwindow *window, int width, int height);
-static void cursorPosCallback(GLFWwindow * window, double xPos, double yPos);
-static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 static void mouseButtonCallback(GLFWwindow * window, int button, int action, int mods);
 static void mouseScrollCallback(GLFWwindow * window, double xOffset, double yOffset);
+static void cursorPosCallback(GLFWwindow* window, double xPos, double yPos);
 
 VkBool32 debugMsgCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject,
                           size_t location, int32_t msgCode, const char* pLayerPrefix, const char* pMsg, void* pUserData)
@@ -60,6 +67,48 @@ VkBool32 debugMsgCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEX
 
     return VK_FALSE;
 }
+
+struct GPUSceneSeting
+{
+    unsigned int frameCounr = 0;
+    glm::vec3 cameraPosition;
+    glm::vec3 cameraFront;
+    glm::vec3 cameraUp;
+    glm::vec4 cameraParams;
+};
+
+struct GPUBVHNode
+{
+    glm::vec3 bboxMin;
+    glm::vec3 bboxMax;
+    int numPrimitive;
+    int axis;
+    int primitiveOffset;
+    int secondChildOffset;
+};
+
+struct GPUVertex
+{
+    glm::vec3 position;
+    glm::vec3 normal;
+    glm::vec3 texcoord;
+};
+
+struct GPUTriangle
+{
+    GPUVertex v0;
+    GPUVertex v1;
+    GPUVertex v2;
+    int mat;
+};
+
+struct GPUMaterial
+{
+    glm::vec3 baseColor;
+    glm::vec3 emissive;
+    float metallic;
+    float roughness;
+};
 
 Renderer::Renderer(int width, int height)
     :mWidth(width), mHeight(height)
@@ -349,9 +398,7 @@ Renderer::Renderer(int width, int height)
     }
     glfwSetWindowUserPointer(mWindow, this);
     glfwSetFramebufferSizeCallback(mWindow, resizeCallback);
-    glfwSetKeyCallback(mWindow, keyCallback);
     glfwSetMouseButtonCallback(mWindow, mouseButtonCallback);
-    glfwSetCursorPosCallback(mWindow, cursorPosCallback);
     glfwSetScrollCallback(mWindow, mouseScrollCallback);
 
     // get swap chain support
@@ -470,6 +517,11 @@ Renderer::~Renderer()
     destroyBuffer(mQuadVertexBuffer);
     destroyBuffer(mQuadIndexBuffer);
     destroyBuffer(mTargetBuffer);
+    destroyBuffer(mSceneSetingBuffer);
+    destroyBuffer(mSceneBVHNodeBuffer);
+    destroyBuffer(mLightBVHNodeBuffer);
+    destroyBuffer(mTriangleBuffer);
+    destroyBuffer(mMaterialBuffer);
     destroyTexture(mRenderTargetTexture);
     for (int i = 0; i < mCommandBuffers.size(); ++i)
     {
@@ -488,6 +540,9 @@ Renderer::~Renderer()
 
     glfwDestroyWindow(mWindow);
     glfwTerminate();
+
+    if(gCamera)
+        delete gCamera;
 }
 
 void Renderer::resize(int width, int height)
@@ -602,8 +657,11 @@ void Renderer::recreateSwapchain(int width, int height)
     }
 }
 
-void Renderer::initRenderer()
+void Renderer::initRenderer(BVH* sceneBVH, std::vector<std::shared_ptr<Material>>& mats)
 {
+    // create camera
+    gCamera = new Camera(glm::vec3(0.0f));
+
     // load buffer
     mQuadVertexBuffer = createBuffer(20 * sizeof(float),
                                      VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -618,6 +676,79 @@ void Renderer::initRenderer()
     mTargetBuffer = createBuffer(mWidth * mHeight * 3 * sizeof(float),
                                  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    mSceneSetingBuffer = createBuffer(sizeof(GPUSceneSeting),
+                                      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    std::vector<GPUBVHNode> sceneBVHNodes;
+    for (int i = 0; i < sceneBVH->getNodeCount(); ++i)
+    {
+        LinearBVHNode* nodes = sceneBVH->getNodes();
+        GPUBVHNode node;
+        node.axis = nodes[i].axis;
+        node.numPrimitive = nodes[i].numPrimitive;
+        node.primitiveOffset = nodes[i].primitiveOffset;
+        node.secondChildOffset = nodes[i].secondChildOffset;
+        node.bboxMin = glm::vec3(nodes[i].bound.mMin.x, nodes[i].bound.mMin.y, nodes[i].bound.mMin.z);
+        node.bboxMax = glm::vec3(nodes[i].bound.mMax.x, nodes[i].bound.mMax.y, nodes[i].bound.mMax.z);
+        sceneBVHNodes.push_back(node);
+    }
+    mSceneBVHNodeBuffer = createBuffer(sceneBVHNodes.size() * sizeof(GPUBVHNode),
+                                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    writeData(mSceneBVHNodeBuffer, 0, sceneBVHNodes.size() * sizeof(GPUBVHNode), sceneBVHNodes.data());
+
+    std::vector<GPUTriangle> triangles;
+    std::vector<std::shared_ptr<Triangle>> prims = sceneBVH->getPrims();
+    for (int i = 0; i < prims.size(); i++)
+    {
+        glm::vec3 p0, p1, p2;
+        glm::vec3 n0, n1, n2;
+        glm::vec2 t0, t1, t2;
+        prims[i]->getPositionData(p0, p1, p2);
+        prims[i]->getNormalData(n0, n1, n2);
+        prims[i]->getUVData(t0, t1, t2);
+
+        GPUVertex v0, v1, v2;
+        v0.position = p0;
+        v0.normal = n0;
+        v0.texcoord = glm::vec3(t0.x, t0.y, 0.0);
+
+        v1.position = p1;
+        v1.normal = n1;
+        v1.texcoord = glm::vec3(t1.x, t1.y, 0.0);
+
+        v2.position = p2;
+        v2.normal = n2;
+        v2.texcoord = glm::vec3(t2.x, t2.y, 0.0);
+
+        GPUTriangle tri;
+        tri.v0 = v0;
+        tri.v1 = v1;
+        tri.v2 = v2;
+        tri.mat = prims[i]->getMaterialID();
+        triangles.push_back(tri);
+    }
+    mTriangleBuffer = createBuffer(triangles.size() * sizeof(GPUTriangle),
+                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    writeData(mTriangleBuffer, 0, triangles.size() * sizeof(GPUTriangle), triangles.data());
+
+    std::vector<GPUMaterial> materials;
+    for (int i = 0; i < mats.size(); ++i)
+    {
+        GPUMaterial mat;
+        mat.baseColor = mats[i]->baseColor;
+        mat.emissive = mats[i]->emissive;
+        mat.metallic = mats[i]->metallic;
+        mat.roughness = mats[i]->roughness;
+        materials.push_back(mat);
+    }
+    mMaterialBuffer = createBuffer(materials.size() * sizeof(GPUMaterial),
+                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    writeData(mMaterialBuffer, 0, materials.size() * sizeof(GPUMaterial), materials.data());
 
     // load texture
     mRenderTargetTexture = createTexture(mWidth, mHeight, VK_FORMAT_R8G8B8A8_UNORM,
@@ -898,17 +1029,57 @@ void Renderer::initRenderer()
         vkDestroyShaderModule(mDevice, shaderModule, nullptr);
     }
     {
-        VkDescriptorSetLayoutBinding traceLayoutBinding{};
-        traceLayoutBinding.binding = 0;
-        traceLayoutBinding.descriptorCount = 1;
-        traceLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        traceLayoutBinding.pImmutableSamplers = nullptr;
-        traceLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+        std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
+        {
+            VkDescriptorSetLayoutBinding layoutBinding = {};
+            layoutBinding.binding = 0;
+            layoutBinding.descriptorCount = 1;
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            layoutBinding.pImmutableSamplers = nullptr;
+            layoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            layoutBindings.push_back(layoutBinding);
+        }
+        {
+            VkDescriptorSetLayoutBinding layoutBinding = {};
+            layoutBinding.binding = 1;
+            layoutBinding.descriptorCount = 1;
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            layoutBinding.pImmutableSamplers = nullptr;
+            layoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            layoutBindings.push_back(layoutBinding);
+        }
+        {
+            VkDescriptorSetLayoutBinding layoutBinding = {};
+            layoutBinding.binding = 2;
+            layoutBinding.descriptorCount = 1;
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            layoutBinding.pImmutableSamplers = nullptr;
+            layoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            layoutBindings.push_back(layoutBinding);
+        }
+        {
+            VkDescriptorSetLayoutBinding layoutBinding = {};
+            layoutBinding.binding = 3;
+            layoutBinding.descriptorCount = 1;
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            layoutBinding.pImmutableSamplers = nullptr;
+            layoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            layoutBindings.push_back(layoutBinding);
+        }
+        {
+            VkDescriptorSetLayoutBinding layoutBinding = {};
+            layoutBinding.binding = 4;
+            layoutBinding.descriptorCount = 1;
+            layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            layoutBinding.pImmutableSamplers = nullptr;
+            layoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+            layoutBindings.push_back(layoutBinding);
+        }
 
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = 1;
-        layoutInfo.pBindings = &traceLayoutBinding;
+        layoutInfo.bindingCount = layoutBindings.size();
+        layoutInfo.pBindings = layoutBindings.data();
 
         if (vkCreateDescriptorSetLayout(mDevice, &layoutInfo, nullptr, &mTraceDescSetLayout) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor set layout!");
@@ -924,20 +1095,84 @@ void Renderer::initRenderer()
             throw std::runtime_error("failed to allocate descriptor sets!");
         }
 
-        VkDescriptorBufferInfo bufferInfo{};
-        bufferInfo.buffer = mTargetBuffer->buffer;
-        bufferInfo.offset = 0;
-        bufferInfo.range = mWidth * mHeight * 3 * sizeof(float);
-
         std::vector<VkWriteDescriptorSet> descriptorWrites;
-        VkWriteDescriptorSet descriptorWrite = {};
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = mTraceDescSets[0];
-        descriptorWrite.dstBinding = 0;
-        descriptorWrite.pBufferInfo  = &bufferInfo;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrites.push_back(descriptorWrite);
+        {
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = mSceneSetingBuffer->buffer;
+            bufferInfo.offset = 0;
+            bufferInfo.range = sizeof(GPUSceneSeting);
+
+            VkWriteDescriptorSet descriptorWrite = {};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = mTraceDescSets[0];
+            descriptorWrite.dstBinding = 0;
+            descriptorWrite.pBufferInfo  = &bufferInfo;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrites.push_back(descriptorWrite);
+        }
+        {
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = mTargetBuffer->buffer;
+            bufferInfo.offset = 0;
+            bufferInfo.range = mWidth * mHeight * 3 * sizeof(float);
+
+            VkWriteDescriptorSet descriptorWrite = {};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = mTraceDescSets[0];
+            descriptorWrite.dstBinding = 1;
+            descriptorWrite.pBufferInfo  = &bufferInfo;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrites.push_back(descriptorWrite);
+        }
+        {
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = mSceneBVHNodeBuffer->buffer;
+            bufferInfo.offset = 0;
+            bufferInfo.range = sceneBVHNodes.size() * sizeof(GPUBVHNode);
+
+            VkWriteDescriptorSet descriptorWrite = {};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = mTraceDescSets[0];
+            descriptorWrite.dstBinding = 2;
+            descriptorWrite.pBufferInfo  = &bufferInfo;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrites.push_back(descriptorWrite);
+        }
+
+        {
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = mTriangleBuffer->buffer;
+            bufferInfo.offset = 0;
+            bufferInfo.range = triangles.size() * sizeof(GPUTriangle);
+
+            VkWriteDescriptorSet descriptorWrite = {};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = mTraceDescSets[0];
+            descriptorWrite.dstBinding = 3;
+            descriptorWrite.pBufferInfo  = &bufferInfo;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrites.push_back(descriptorWrite);
+        }
+
+        {
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = mMaterialBuffer->buffer;
+            bufferInfo.offset = 0;
+            bufferInfo.range = materials.size() * sizeof(GPUMaterial);
+
+            VkWriteDescriptorSet descriptorWrite = {};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = mTraceDescSets[0];
+            descriptorWrite.dstBinding = 4;
+            descriptorWrite.pBufferInfo  = &bufferInfo;
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+            descriptorWrites.push_back(descriptorWrite);
+        }
 
         vkUpdateDescriptorSets(mDevice, descriptorWrites.size(), descriptorWrites.data(), 0, nullptr);
 
@@ -969,6 +1204,20 @@ void Renderer::run()
 {
     while (!glfwWindowShouldClose(mWindow))
     {
+        // update
+        if (gMouseButtonDown[1])
+        {
+            gMouseLastPosition[0] = gMousePosition[0];
+            gMouseLastPosition[1] = gMousePosition[1];
+        }
+        if (gMouseButtonHeld[1])
+        {
+            gCamera->rotate(glm::vec2(gMousePosition[0] - gMouseLastPosition[0], gMousePosition[1] - gMouseLastPosition[1]));
+            gMouseLastPosition[0] = gMousePosition[0];
+            gMouseLastPosition[1] = gMousePosition[1];
+        }
+        gCamera->move(gMouseScrollWheel * 5.0);
+
         uint32_t imageIndex;
         vkAcquireNextImageKHR(mDevice, mSwapChain, UINT64_MAX, mImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
         // fill cmd buf
@@ -1049,8 +1298,11 @@ void Renderer::run()
         presentInfo.pImageIndices = &imageIndex;
 
         vkQueuePresentKHR(mGraphicsQueue, &presentInfo);
-
         vkQueueWaitIdle(mGraphicsQueue);
+
+        memset(gMouseButtonDown, 0, sizeof(gMouseButtonDown));
+        memset(gMouseButtonUp, 0, sizeof(gMouseButtonUp));
+        gMouseScrollWheel = 0;
         glfwPollEvents();
     }
 }
@@ -1437,30 +1689,17 @@ void resizeCallback(GLFWwindow * window, int width, int height)
     renderer->resize(width, height);
 }
 
-void cursorPosCallback(GLFWwindow * window, double xPos, double yPos)
-{
-}
-
-void keyCallback(GLFWwindow * window, int key, int scancode, int action, int mods)
-{
-    switch (action)
-    {
-        case GLFW_PRESS:
-            break;
-        case GLFW_RELEASE:
-            break;
-        default:
-            break;
-    }
-}
-
 void mouseButtonCallback(GLFWwindow * window, int button, int action, int mods)
 {
     switch (action)
     {
         case GLFW_PRESS:
+            gMouseButtonDown[button] = true;
+            gMouseButtonHeld[button] = true;
             break;
         case GLFW_RELEASE:
+            gMouseButtonUp[button] = true;
+            gMouseButtonHeld[button] = false;
             break;
         default:
             break;
@@ -1469,4 +1708,11 @@ void mouseButtonCallback(GLFWwindow * window, int button, int action, int mods)
 
 void mouseScrollCallback(GLFWwindow * window, double xOffset, double yOffset)
 {
+    gMouseScrollWheel = yOffset;
+}
+
+void cursorPosCallback(GLFWwindow* window, double xPos, double yPos)
+{
+    gMousePosition[0] = xPos;
+    gMousePosition[1] = yPos;
 }

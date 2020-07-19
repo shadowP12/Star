@@ -8,6 +8,8 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include <string>
+#include <memory>
+
 struct SwapChainSupportDetails
 {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -38,12 +40,15 @@ struct CommandBuffer
     VkFence fence = VK_NULL_HANDLE;
 };
 
+class BVH;
+class Material;
+
 class Renderer
 {
 public:
     Renderer(int width, int height);
     ~Renderer();
-    void initRenderer();
+    void initRenderer(BVH* sceneBVH, std::vector<std::shared_ptr<Material>>& mats);
     void run();
     void resize(int width, int height);
 private:
@@ -67,6 +72,7 @@ private:
     CommandBuffer* getActiveCommandBuffer();
     void destroyCommandBuffer(CommandBuffer* commandBuffer);
     bool checkCommandBufferState(CommandBuffer* commandBuffer);
+
 private:
     VkInstance mInstance;
     VkDebugReportCallbackEXT mDebugCallback = VK_NULL_HANDLE;
@@ -114,6 +120,11 @@ private:
     Buffer* mQuadVertexBuffer = nullptr;
     Buffer* mQuadIndexBuffer = nullptr;
     Buffer* mTargetBuffer = nullptr;
+    Buffer* mSceneSetingBuffer = nullptr;
+    Buffer* mSceneBVHNodeBuffer = nullptr;
+    Buffer* mLightBVHNodeBuffer = nullptr;
+    Buffer* mTriangleBuffer = nullptr;
+    Buffer* mMaterialBuffer = nullptr;
     GLFWwindow* mWindow;
     int mWidth;
     int mHeight;

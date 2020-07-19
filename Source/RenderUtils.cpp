@@ -181,3 +181,39 @@ std::vector<unsigned int> compileShader(const ShaderDesc& desc)
     glslang::FinalizeProcess();
     return byteCode;
 }
+
+Camera::Camera(glm::vec3 position, float yaw, float pitch)
+{
+    mPosition = position;
+    mFront = glm::vec3(0, 0, -1);
+    mUp = glm::vec3(0, 1, 0);
+    mYaw = yaw;
+    mPitch = pitch;
+}
+
+Camera::~Camera()
+{
+}
+
+void Camera::move(float wheel)
+{
+    mPosition += mFront * wheel * 0.1f;
+}
+
+void Camera::rotate(glm::vec2 offset)
+{
+    mYaw += offset.x * 0.1f;
+    mPitch += -offset.y * 0.1f;
+    updateVectors();
+}
+
+void Camera::updateVectors()
+{
+    glm::vec3 front;
+    front.x = cos(glm::radians(mYaw)) * cos(glm::radians(mPitch));
+    front.y = sin(glm::radians(mPitch));
+    front.z = sin(glm::radians(mYaw)) * cos(glm::radians(mPitch));
+    mFront = glm::normalize(front);
+    mRight = glm::normalize(glm::cross(mFront, glm::vec3(0, 1, 0)));
+    mUp = glm::normalize(glm::cross(mRight, mFront));
+}
