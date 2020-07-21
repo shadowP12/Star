@@ -70,11 +70,11 @@ VkBool32 debugMsgCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEX
 
 struct GPUSceneSeting
 {
-    unsigned int frameCounr = 0;
-    glm::vec3 cameraPosition;
-    glm::vec3 cameraFront;
-    glm::vec3 cameraUp;
-    glm::vec4 cameraParams;
+    alignas(16) glm::vec4 cameraParams;
+    alignas(16) glm::vec3 cameraPosition;
+    alignas(16) glm::vec3 cameraFront;
+    alignas(16) glm::vec3 cameraUp;
+    alignas(4) uint32_t frameCount = 0;
 };
 
 struct GPUBVHNode
@@ -400,6 +400,7 @@ Renderer::Renderer(int width, int height)
     glfwSetFramebufferSizeCallback(mWindow, resizeCallback);
     glfwSetMouseButtonCallback(mWindow, mouseButtonCallback);
     glfwSetScrollCallback(mWindow, mouseScrollCallback);
+    glfwSetCursorPosCallback(mWindow, cursorPosCallback);
 
     // get swap chain support
     VkBool32 supportsPresent;
@@ -1182,7 +1183,7 @@ void Renderer::initRenderer(BVH* sceneBVH, std::vector<std::shared_ptr<Material>
         pipelineLayoutCreateInfo.pSetLayouts = &mTraceDescSetLayout;
         vkCreatePipelineLayout(mDevice, &pipelineLayoutCreateInfo, nullptr, &mTracePipelineLayout);
 
-        VkShaderModule shaderModule = createShader(2, "./Resources/Shaders/trace.comp");
+        VkShaderModule shaderModule = createShader(2, "./Resources/Shaders/trace.comp", "./Resources/Shaders/ray");
         VkPipelineShaderStageCreateInfo shaderStageInfo{};
         shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         shaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -1212,11 +1213,24 @@ void Renderer::run()
         }
         if (gMouseButtonHeld[1])
         {
-            gCamera->rotate(glm::vec2(gMousePosition[0] - gMouseLastPosition[0], gMousePosition[1] - gMouseLastPosition[1]));
+            glm::vec2 offset = glm::vec2(gMousePosition[0] - gMouseLastPosition[0], gMousePosition[1] - gMouseLastPosition[1]);
+            gCamera->rotate(offset);
             gMouseLastPosition[0] = gMousePosition[0];
             gMouseLastPosition[1] = gMousePosition[1];
         }
         gCamera->move(gMouseScrollWheel * 5.0);
+
+        if(mDirty)
+        {
+            mSamplerCount = 0;
+        }
+
+        GPUSceneSeting sceneSeting;
+        sceneSeting.frameCount = mSamplerCount;
+        sceneSeting.cameraPosition = gCamera->getPosition();
+        sceneSeting.cameraFront = gCamera->getFront();
+        sceneSeting.cameraUp = gCamera->getUp();
+        writeData(mSceneSetingBuffer, 0, sizeof(GPUSceneSeting), &sceneSeting);
 
         uint32_t imageIndex;
         vkAcquireNextImageKHR(mDevice, mSwapChain, UINT64_MAX, mImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
@@ -1303,6 +1317,7 @@ void Renderer::run()
         memset(gMouseButtonDown, 0, sizeof(gMouseButtonDown));
         memset(gMouseButtonUp, 0, sizeof(gMouseButtonUp));
         gMouseScrollWheel = 0;
+        mSamplerCount++;
         glfwPollEvents();
     }
 }

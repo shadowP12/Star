@@ -1,71 +1,15 @@
 #version 450
-
+#extension GL_GOOGLE_include_directive : enable
+#include "data.glsl"
 layout (local_size_x = 16, local_size_y = 16) in;
-
-struct Camera
-{
-    vec3 orig;
-    vec3 front;
-    vec3 up;
-    vec4 params;
-};
-
-struct Ray
-{
-    vec3 origin;
-    vec3 dir;
-};
-
-struct BVHNode
-{
-    vec3 bboxMin;
-    vec3 bboxMax;
-    int numPrimitive;
-    int axis;
-    int primitiveOffset;
-    int secondChildOffset;
-};
-
-struct Vertex
-{
-    vec3 position;
-    vec3 normal;
-    vec3 texcoord;
-};
-
-struct Material
-{
-    vec3 baseColor;
-    vec3 emission;
-    float metallic;
-    float roughness;
-};
-
-struct Triangle
-{
-    Vertex v0;
-    Vertex v1;
-    Vertex v2;
-    int mat;
-};
-
-struct IntersectData
-{
-    bool hit;
-    Ray ray;
-    float t;
-    vec3 pos;
-    vec3 texcoord;
-    vec3 normal;
-};
 
 layout (binding = 0) uniform SceneSeting
 {
-    int frameCounr;
+    vec4 cameraParams;
     vec3 cameraPosition;
     vec3 cameraFront;
     vec3 cameraUp;
-    vec4 cameraParams;
+    uint frameCount;
 } globalSceneSeting;
 
 layout(std140, binding = 1) buffer TargetBuffer
@@ -91,5 +35,6 @@ layout(std140, binding = 4) buffer MaterialBuffer
 void main()
 {
     int index = int(gl_GlobalInvocationID);
-    globalPixels[index] = vec3(0.3);
+
+    globalPixels[index] = normalize(globalSceneSeting.cameraFront);
 }

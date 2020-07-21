@@ -129,4 +129,5 @@ private:
     int mWidth;
     int mHeight;
     int mSamplerCount;
+    bool mDirty = false;
 };
