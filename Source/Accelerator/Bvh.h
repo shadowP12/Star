@@ -6,6 +6,7 @@
 namespace accel {
     class Bvh
     {
+    public:
         enum class NodeType
         {
             Internal,
@@ -51,12 +52,15 @@ namespace accel {
         Bvh();
         ~Bvh();
         void build(BBox* bounds, int numBound);
+        int getNumIndices() { return  mPackedIndices.size(); }
+        uint32_t* getIndices() { return &mPackedIndices[0]; }
     protected:
         virtual void initNodeAllocator(uint32_t maxNum);
         virtual Node* allocateNode();
         virtual void buildImpl(BBox* bounds, int numBound);
         Node* buildNode(SplitRequest& req, std::vector<PrimRef>& primRefs);
     protected:
+        friend class BvhTranslator;
         Node* mRoot;
         uint32_t mNodeCount;
         int mHeight;
