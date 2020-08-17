@@ -22,6 +22,11 @@ namespace accel {
         mMax = glm::vec3(glm::max(p1.x, p2.x), glm::max(p1.y, p2.y), glm::max(p1.z, p2.z));
     }
 
+    glm::vec3 BBox::center()
+    {
+        return (mMax + mMin) * 0.5f;
+    }
+
     glm::vec3 BBox::diagonal()
     {
         return (mMax - mMin);
@@ -33,7 +38,7 @@ namespace accel {
         return (d.x * d.y + d.x * d.z + d.y * d.z) * 2;
     }
 
-    float BBox::Volume()
+    float BBox::volume()
     {
         glm::vec3 d = diagonal();
         return d.x * d.y * d.z;

@@ -12,11 +12,13 @@ namespace accel {
 
         BBox(const glm::vec3& p1, const glm::vec3& p2);
 
+        glm::vec3 center();
+
         glm::vec3 diagonal();
 
         float surfaceArea();
 
-        float Volume();
+        float volume();
 
         int maximumExtent();
 
