@@ -3,5 +3,6 @@ set(STAR_SRC
         Source/Accelerator/Bvh.cpp
         Source/Accelerator/BvhTranslator.cpp
         Source/Scene.cpp
+        Source/Importer.cpp
         Source/Renderer.cpp
 )
