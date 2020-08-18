@@ -52,6 +52,7 @@ namespace accel {
         Bvh();
         ~Bvh();
         void build(BBox* bounds, int numBound);
+        BBox getBound() { return mBound; }
         int getNumIndices() { return  mPackedIndices.size(); }
         uint32_t* getIndices() { return &mPackedIndices[0]; }
     protected:

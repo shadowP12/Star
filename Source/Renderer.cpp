@@ -1,25 +1,27 @@
 #include "Renderer.h"
 
-Renderer::Renderer(uint32_t width, uint32_t height)
-        :Application(width, height)
-{
-}
+namespace star {
+    Renderer::Renderer(uint32_t width, uint32_t height)
+            :Application(width, height)
+    {
+    }
 
-Renderer::~Renderer()
-{
-}
+    Renderer::~Renderer()
+    {
+    }
 
-void Renderer::prepare()
-{
+    void Renderer::prepare()
+    {
 
-}
+    }
 
-void Renderer::run()
-{
+    void Renderer::run()
+    {
 
-}
+    }
 
-void Renderer::finish()
-{
+    void Renderer::finish()
+    {
 
+    }
 }
