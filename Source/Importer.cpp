@@ -2,6 +2,7 @@
 #include "Scene.h"
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
 namespace star {

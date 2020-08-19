@@ -1,15 +1,15 @@
 #version 450
 
 layout (local_size_x = 16, local_size_y = 16) in;
-layout(std140, binding = 0) buffer targetBuffer
+layout(std140, binding = 0) buffer traceBuffer
 {
     vec3 pixels[ ];
 };
-layout (binding = 1, rgba8) uniform image2D resultImage;
+layout (binding = 1, rgba32f) uniform image2D accumImage;
 
 void main()
 {
     int index = int(gl_GlobalInvocationID);
     vec4 res = vec4(pixels[index], 1.0);
-    imageStore(resultImage, ivec2(gl_GlobalInvocationID.xy), res);
+    imageStore(accumImage, ivec2(gl_GlobalInvocationID.xy), res);
 }
