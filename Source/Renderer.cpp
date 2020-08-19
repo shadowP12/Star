@@ -121,11 +121,6 @@ namespace star {
         mQuadIndexBuffer = new RHIBuffer(mDevice, bufferInfo);
         mQuadIndexBuffer->writeData(0, sizeof(quadIndices), quadIndices);
 
-        bufferInfo.size = mWidth * mHeight * 3 * sizeof(float);
-        bufferInfo.descriptors = DESCRIPTOR_TYPE_RW_BUFFER;
-        bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
-        mTraceBuffer = new RHIBuffer(mDevice, bufferInfo);
-
         bufferInfo.size = sizeof(GlobalSetting);
         bufferInfo.descriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
@@ -140,9 +135,20 @@ namespace star {
         textureInfo.mipLevels = 1;
         textureInfo.arrayLayers = 1;
         mAccumTexture = new RHITexture(mDevice, textureInfo);
+
+        textureInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        textureInfo.descriptors = DESCRIPTOR_TYPE_RW_TEXTURE;
+        textureInfo.width = mWidth;
+        textureInfo.height = mHeight;
+        textureInfo.depth = 1;
+        textureInfo.mipLevels = 1;
+        textureInfo.arrayLayers = 1;
+        mTraceTexture = new RHITexture(mDevice, textureInfo);
+
         cmdBuf->begin();
-        RHITextureBarrier barrier = { mAccumTexture, RESOURCE_STATE_COMMON };
-        cmdBuf->setResourceBarrier(0, nullptr, 1, &barrier);
+        RHITextureBarrier barriers[] = { { mAccumTexture, RESOURCE_STATE_COMMON },
+                                       { mTraceTexture, RESOURCE_STATE_COMMON } };
+        cmdBuf->setResourceBarrier(0, nullptr, 2, barriers);
         cmdBuf->end();
         RHIQueueSubmitInfo submitInfo;
         submitInfo.cmdBuf = cmdBuf;
@@ -166,28 +172,28 @@ namespace star {
         descriptorSetInfo.bindingCount = 2;
         descriptorSetInfo.bindings[0].binding = 0;
         descriptorSetInfo.bindings[0].descriptorCount = 1;
-        descriptorSetInfo.bindings[0].type = DESCRIPTOR_TYPE_RW_BUFFER;
+        descriptorSetInfo.bindings[0].type = DESCRIPTOR_TYPE_RW_TEXTURE;
         descriptorSetInfo.bindings[0].stage = PROGRAM_COMPUTE;
         descriptorSetInfo.bindings[1].binding = 1;
         descriptorSetInfo.bindings[1].descriptorCount = 1;
         descriptorSetInfo.bindings[1].type = DESCRIPTOR_TYPE_RW_TEXTURE;
         descriptorSetInfo.bindings[1].stage = PROGRAM_COMPUTE;
         mAccumDescSet = new RHIDescriptorSet(mDevice, descriptorSetInfo);
-        mAccumDescSet->updateBuffer(0, DESCRIPTOR_TYPE_RW_BUFFER, mTraceBuffer, mWidth * mHeight * 3 * sizeof(float), 0);
+        mAccumDescSet->updateTexture(0, DESCRIPTOR_TYPE_RW_TEXTURE, mTraceTexture);
         mAccumDescSet->updateTexture(1, DESCRIPTOR_TYPE_RW_TEXTURE, mAccumTexture);
 
         descriptorSetInfo.set = 0;
         descriptorSetInfo.bindingCount = 2;
         descriptorSetInfo.bindings[0].binding = 0;
         descriptorSetInfo.bindings[0].descriptorCount = 1;
-        descriptorSetInfo.bindings[0].type = DESCRIPTOR_TYPE_RW_BUFFER;
+        descriptorSetInfo.bindings[0].type = DESCRIPTOR_TYPE_RW_TEXTURE;
         descriptorSetInfo.bindings[0].stage = PROGRAM_COMPUTE;
         descriptorSetInfo.bindings[1].binding = 1;
         descriptorSetInfo.bindings[1].descriptorCount = 1;
         descriptorSetInfo.bindings[1].type = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorSetInfo.bindings[1].stage = PROGRAM_COMPUTE;
         mTraceDescSet = new RHIDescriptorSet(mDevice, descriptorSetInfo);
-        mTraceDescSet->updateBuffer(0, DESCRIPTOR_TYPE_RW_BUFFER, mTraceBuffer, mWidth * mHeight * 3 * sizeof(float), 0);
+        mTraceDescSet->updateTexture(0, DESCRIPTOR_TYPE_RW_TEXTURE, mTraceTexture);
         mTraceDescSet->updateBuffer(1, DESCRIPTOR_TYPE_UNIFORM_BUFFER, mSettingBuffer, sizeof(GlobalSetting), 0);
 
         VertexLayout vertexLayout;
@@ -248,8 +254,8 @@ namespace star {
         cmdBuf->bindComputePipeline(mTracePipeline, &mTraceDescSet, 1);
         cmdBuf->dispatch(mWidth / 16, mHeight / 16, 1);
         {
-            RHIBufferBarrier barriers[] = { { mTraceBuffer, RESOURCE_STATE_UNORDERED_ACCESS } };
-            cmdBuf->setResourceBarrier(1, barriers, 0, nullptr);
+            RHITextureBarrier barriers[] = { { mTraceTexture, RESOURCE_STATE_UNORDERED_ACCESS } };
+            cmdBuf->setResourceBarrier(0, nullptr, 1, barriers);
         }
         cmdBuf->bindComputePipeline(mAccumPipeline, &mAccumDescSet, 1);
         cmdBuf->dispatch(mWidth / 16, mHeight / 16, 1);
@@ -288,9 +294,9 @@ namespace star {
 
     void Renderer::finish()
     {
+        SAFE_DELETE(mTraceTexture);
         SAFE_DELETE(mAccumTexture);
         SAFE_DELETE(mSettingBuffer);
-        SAFE_DELETE(mTraceBuffer);
         SAFE_DELETE(mQuadVertexBuffer);
         SAFE_DELETE(mQuadIndexBuffer);
         SAFE_DELETE(mDefaultSampler);
@@ -330,7 +336,7 @@ namespace star {
         if (Input::instance().getMouseButton(MouseButton::MouseRight))
         {
             mCamera.yaw += offset.x * 0.1f;
-            mCamera.pitch += -offset.y * 0.1f;
+            mCamera.pitch += offset.y * 0.1f;
             glm::vec3 front;
             front.x = cos(glm::radians(mCamera.yaw)) * cos(glm::radians(mCamera.pitch));
             front.y = sin(glm::radians(mCamera.pitch));

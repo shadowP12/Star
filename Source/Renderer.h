@@ -73,8 +73,8 @@ namespace star {
         RHIDescriptorSet* mAccumDescSet = nullptr;
         RHIBuffer* mQuadVertexBuffer = nullptr;
         RHIBuffer* mQuadIndexBuffer = nullptr;
-        RHIBuffer* mTraceBuffer = nullptr;
         RHIBuffer* mSettingBuffer = nullptr;
+        RHITexture* mTraceTexture = nullptr;
         RHITexture* mAccumTexture = nullptr;
         RHISampler* mDefaultSampler = nullptr;
     };
