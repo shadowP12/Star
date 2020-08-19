@@ -17,6 +17,30 @@ class RHISampler;
 namespace star {
     class Scene;
 
+    struct GlobalSetting
+    {
+        alignas(16) glm::vec3 cameraPosition;
+        alignas(16) glm::vec3 cameraRight;
+        alignas(16) glm::vec3 cameraUp;
+        alignas(16) glm::vec3 cameraFront;
+        alignas(16) glm::vec4 cameraParam;
+        alignas(16) glm::vec4 screenParam;
+    };
+
+    struct Camera
+    {
+        glm::vec3 position;
+        glm::vec3 front;
+        glm::vec3 up;
+        glm::vec3 right;
+        glm::vec2 lastMousePosition;
+        float yaw;
+        float pitch;
+        float fov;
+        float aperture;
+        float focalDist;
+    };
+
     class Renderer : public Application
     {
     public:
@@ -26,8 +50,12 @@ namespace star {
         virtual void run();
         virtual void finish();
     protected:
+        void updateGlobalSetting();
+        int updateCamera();
+    protected:
         uint32_t mWidth;
         uint32_t mHeight;
+        Camera mCamera;
         Scene* mScene;
         RHIDevice* mDevice = nullptr;
         RHISwapChain* mSwapChain = nullptr;
@@ -46,6 +74,7 @@ namespace star {
         RHIBuffer* mQuadVertexBuffer = nullptr;
         RHIBuffer* mQuadIndexBuffer = nullptr;
         RHIBuffer* mTraceBuffer = nullptr;
+        RHIBuffer* mSettingBuffer = nullptr;
         RHITexture* mAccumTexture = nullptr;
         RHISampler* mDefaultSampler = nullptr;
     };

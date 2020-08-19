@@ -50,6 +50,16 @@ namespace star {
 
     void Renderer::prepare()
     {
+        mCamera.position = glm::vec3(0.0f, 0.0f, 0.0f);
+        mCamera.right = glm::vec3(1.0f, 0.0f, 0.0f);
+        mCamera.up = glm::vec3(0.0f, 1.0f, 0.0f);
+        mCamera.front = glm::vec3(0.0f, 0.0f, -1.0f);
+        mCamera.yaw = -90.0f;
+        mCamera.pitch = 0.0f;
+        mCamera.fov = 60.0f;
+        mCamera.focalDist = 0.1f;
+        mCamera.aperture = 0.0f;
+
         mDevice = new RHIDevice();
 
         RHISwapChainInfo swapChainInfo;
@@ -116,6 +126,11 @@ namespace star {
         bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
         mTraceBuffer = new RHIBuffer(mDevice, bufferInfo);
 
+        bufferInfo.size = sizeof(GlobalSetting);
+        bufferInfo.descriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+        mSettingBuffer = new RHIBuffer(mDevice, bufferInfo);
+
         RHITextureInfo textureInfo;
         textureInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
         textureInfo.descriptors = DESCRIPTOR_TYPE_TEXTURE | DESCRIPTOR_TYPE_RW_TEXTURE;
@@ -162,13 +177,18 @@ namespace star {
         mAccumDescSet->updateTexture(1, DESCRIPTOR_TYPE_RW_TEXTURE, mAccumTexture);
 
         descriptorSetInfo.set = 0;
-        descriptorSetInfo.bindingCount = 1;
+        descriptorSetInfo.bindingCount = 2;
         descriptorSetInfo.bindings[0].binding = 0;
         descriptorSetInfo.bindings[0].descriptorCount = 1;
         descriptorSetInfo.bindings[0].type = DESCRIPTOR_TYPE_RW_BUFFER;
         descriptorSetInfo.bindings[0].stage = PROGRAM_COMPUTE;
+        descriptorSetInfo.bindings[1].binding = 1;
+        descriptorSetInfo.bindings[1].descriptorCount = 1;
+        descriptorSetInfo.bindings[1].type = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorSetInfo.bindings[1].stage = PROGRAM_COMPUTE;
         mTraceDescSet = new RHIDescriptorSet(mDevice, descriptorSetInfo);
         mTraceDescSet->updateBuffer(0, DESCRIPTOR_TYPE_RW_BUFFER, mTraceBuffer, mWidth * mHeight * 3 * sizeof(float), 0);
+        mTraceDescSet->updateBuffer(1, DESCRIPTOR_TYPE_UNIFORM_BUFFER, mSettingBuffer, sizeof(GlobalSetting), 0);
 
         VertexLayout vertexLayout;
         vertexLayout.attribCount = 2;
@@ -212,6 +232,10 @@ namespace star {
     {
         uint32_t imageIndex;
         mSwapChain->acquireNextImage(mImageAvailableSemaphore, nullptr, imageIndex);
+        // update date
+        int cameraDirtyFlag = updateCamera();
+        updateGlobalSetting();
+
         RHICommandBuffer* cmdBuf = mDevice->getGraphicsCommandPool()->getActiveCmdBuffer();
         cmdBuf->begin();
         RHITexture* colorTarget = mSwapChain->getColorTexture(imageIndex);
@@ -265,6 +289,7 @@ namespace star {
     void Renderer::finish()
     {
         SAFE_DELETE(mAccumTexture);
+        SAFE_DELETE(mSettingBuffer);
         SAFE_DELETE(mTraceBuffer);
         SAFE_DELETE(mQuadVertexBuffer);
         SAFE_DELETE(mQuadIndexBuffer);
@@ -283,5 +308,45 @@ namespace star {
         SAFE_DELETE(mRenderFinishedSemaphore);
         SAFE_DELETE(mSwapChain);
         SAFE_DELETE(mDevice);
+    }
+
+    void Renderer::updateGlobalSetting()
+    {
+        GlobalSetting globalSetting;
+        globalSetting.cameraPosition = mCamera.position;
+        globalSetting.cameraRight = mCamera.right;
+        globalSetting.cameraUp = mCamera.up;
+        globalSetting.cameraFront = mCamera.front;
+        globalSetting.cameraParam = glm::vec4(mCamera.fov, mCamera.focalDist, mCamera.aperture, 0.0f);
+        globalSetting.screenParam = glm::vec4((float)mWidth, (float)mHeight, 0.0f, 0.0f);
+        mSettingBuffer->writeData(0, sizeof(globalSetting), &globalSetting);
+    }
+
+    int Renderer::updateCamera()
+    {
+        int dirtyFlag = 0;
+        glm::vec2 offset = Input::instance().getMousePosition() - mCamera.lastMousePosition;
+        mCamera.lastMousePosition = Input::instance().getMousePosition();
+        if (Input::instance().getMouseButton(MouseButton::MouseRight))
+        {
+            mCamera.yaw += offset.x * 0.1f;
+            mCamera.pitch += -offset.y * 0.1f;
+            glm::vec3 front;
+            front.x = cos(glm::radians(mCamera.yaw)) * cos(glm::radians(mCamera.pitch));
+            front.y = sin(glm::radians(mCamera.pitch));
+            front.z = sin(glm::radians(mCamera.yaw)) * cos(glm::radians(mCamera.pitch));
+            mCamera.front = glm::normalize(front);
+            mCamera.right = glm::normalize(glm::cross(mCamera.front, glm::vec3(0, 1, 0)));
+            mCamera.up = glm::normalize(glm::cross(mCamera.right, mCamera.front));
+            dirtyFlag = 1;
+        }
+        if (Input::instance().getMouseScrollWheel() != 0)
+        {
+            float sw = Input::instance().getMouseScrollWheel();
+            mCamera.position += mCamera.front * sw * 0.1f;
+            dirtyFlag = 1;
+        }
+
+        return dirtyFlag;
     }
 }

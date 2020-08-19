@@ -7,8 +7,18 @@ layout(std140, binding = 0) buffer traceBuffer
     vec3 pixels[ ];
 };
 
+layout(binding = 1) uniform GlobalSetting {
+    vec3 cameraPosition;
+    vec3 cameraRight;
+    vec3 cameraUp;
+    vec3 cameraFront;
+    vec4 cameraParam;
+    vec4 screenParam;
+} globalSetting;
+
 void main()
 {
     int index = int(gl_GlobalInvocationID);
-    pixels[index] = vec3(0.0, 0.0, 1.0);
+
+    pixels[index] = globalSetting.cameraRight;//vec3(0.0, 0.0, 1.0);
 }
