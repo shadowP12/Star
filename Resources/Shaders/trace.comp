@@ -2,6 +2,16 @@
 #extension GL_GOOGLE_include_directive : enable
 layout (local_size_x = 16, local_size_y = 16) in;
 
+struct BvhNode {
+    vec3 test1;
+    vec3 test2;
+};
+
+struct Ray {
+    vec3 origin;
+    vec3 direction;
+};
+
 layout (binding = 0, rgba32f) uniform image2D traceImage;
 
 layout(binding = 1) uniform GlobalSetting {
@@ -13,9 +23,9 @@ layout(binding = 1) uniform GlobalSetting {
     vec4 screenParam;
 } globalSetting;
 
-struct Ray {
-    vec3 origin;
-    vec3 direction;
+layout(std140, binding = 2) buffer SceneBvhNodeBuffer
+{
+    BvhNode sceneBvhNodes[ ];
 };
 
 Ray genCameraRay()
@@ -32,7 +42,7 @@ Ray genCameraRay()
     float y = float(gl_GlobalInvocationID.y) - 0.5;
 
     x = (2.0f * ((x + 0.5f) * invWidth) - 1) * angle * aspectratio;
-    y = -(1.0f - 2.0f * ((y + 0.5f) * invHeight)) * angle;
+    y = (1.0f - 2.0f * ((y + 0.5f) * invHeight)) * angle;
 
     vec3 dir = normalize(x * globalSetting.cameraRight + y * globalSetting.cameraUp + globalSetting.cameraFront);
 
@@ -53,7 +63,7 @@ void main()
     for(int i = 0; i < maxSteps; ++i)
     {
         vec3 p = ro + rd * t;
-        float d = length(p - vec3(0.0, 0.0, -10.0)) - 2.0;
+        float d = length(p - vec3(0.0, 2.0, -10.0)) - 2.0;
         if(d < 0.001)
         {
             color = vec3(1.0);
@@ -62,6 +72,7 @@ void main()
 
         t += d;
     }
+    color = sceneBvhNodes[1].test1;
     vec4 res = vec4(color, 1.0);
     imageStore(traceImage, ivec2(gl_GlobalInvocationID.xy), res);
 }

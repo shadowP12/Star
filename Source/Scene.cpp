@@ -95,7 +95,7 @@ namespace star {
 
         for (int i = 0; i < mMeshInstances.size(); ++i)
         {
-            mTransforms.push_back(mMeshInstances[i].transform);
+            mTransforms.push_back({mMeshInstances[i].transform});
         }
 
         int verticesCount = 0;
@@ -111,12 +111,16 @@ namespace star {
                 int v2 = (index * 3 + 1) + verticesCount;
                 int v3 = (index * 3 + 2) + verticesCount;
 
-                mVertIndices.push_back(glm::ivec3(v1, v2, v3));
+                mIndices.push_back({ glm::ivec3(v1, v2, v3) });
             }
 
-            mVertices.insert(mVertices.end(), mMeshs[i]->mVertices.begin(), mMeshs[i]->mVertices.end());
-            mNormals.insert(mNormals.end(), mMeshs[i]->mNormals.begin(), mMeshs[i]->mNormals.end());
-            mUV.insert(mUV.end(), mMeshs[i]->mUVs.begin(), mMeshs[i]->mUVs.end());
+            for (int j = 0; j < mMeshs[i]->mVertices.size(); ++j)
+            {
+                Vertex vertex;
+                vertex.positionUVX = glm::vec4(mMeshs[i]->mVertices[j].x, mMeshs[i]->mVertices[j].y, mMeshs[i]->mVertices[j].z, mMeshs[i]->mUVs[j].x);
+                vertex.normalUVY = glm::vec4(mMeshs[i]->mNormals[j].x, mMeshs[i]->mNormals[j].y, mMeshs[i]->mNormals[j].z, mMeshs[i]->mUVs[j].y);
+                mVertices.push_back(vertex);
+            }
 
             verticesCount += mMeshs[i]->mVertices.size();
         }

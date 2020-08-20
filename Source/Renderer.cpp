@@ -14,9 +14,14 @@
 #include <Utility/FileSystem.h>
 #include <RHI/Managers/SpirvManager.h>
 
-struct Vertex {
+struct QuadVertex {
     glm::vec3 pos;
     glm::vec2 uv;
+};
+
+struct TempBvhNode {
+    alignas(16) glm::vec3 test1;
+    alignas(16) glm::vec3 test2;
 };
 
 static float quadVertices[] =
@@ -126,6 +131,15 @@ namespace star {
         bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
         mSettingBuffer = new RHIBuffer(mDevice, bufferInfo);
 
+        bufferInfo.size = sizeof(TempBvhNode) * 2;
+        bufferInfo.descriptors = DESCRIPTOR_TYPE_RW_BUFFER;
+        bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+        mSceneBvhNodeBuffer = new RHIBuffer(mDevice, bufferInfo);
+        std::vector<TempBvhNode> tempNodes;
+        tempNodes.push_back({glm::vec3(1, 0, 0), glm::vec3(0, 1, 0)});
+        tempNodes.push_back({glm::vec3(0, 1, 0), glm::vec3(1, 1, 1)});
+        mSceneBvhNodeBuffer->writeData(0, sizeof(TempBvhNode) * 2, tempNodes.data());
+
         RHITextureInfo textureInfo;
         textureInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
         textureInfo.descriptors = DESCRIPTOR_TYPE_TEXTURE | DESCRIPTOR_TYPE_RW_TEXTURE;
@@ -183,7 +197,7 @@ namespace star {
         mAccumDescSet->updateTexture(1, DESCRIPTOR_TYPE_RW_TEXTURE, mAccumTexture);
 
         descriptorSetInfo.set = 0;
-        descriptorSetInfo.bindingCount = 2;
+        descriptorSetInfo.bindingCount = 3;
         descriptorSetInfo.bindings[0].binding = 0;
         descriptorSetInfo.bindings[0].descriptorCount = 1;
         descriptorSetInfo.bindings[0].type = DESCRIPTOR_TYPE_RW_TEXTURE;
@@ -192,22 +206,27 @@ namespace star {
         descriptorSetInfo.bindings[1].descriptorCount = 1;
         descriptorSetInfo.bindings[1].type = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorSetInfo.bindings[1].stage = PROGRAM_COMPUTE;
+        descriptorSetInfo.bindings[2].binding = 2;
+        descriptorSetInfo.bindings[2].descriptorCount = 1;
+        descriptorSetInfo.bindings[2].type = DESCRIPTOR_TYPE_RW_BUFFER;
+        descriptorSetInfo.bindings[2].stage = PROGRAM_COMPUTE;
         mTraceDescSet = new RHIDescriptorSet(mDevice, descriptorSetInfo);
         mTraceDescSet->updateTexture(0, DESCRIPTOR_TYPE_RW_TEXTURE, mTraceTexture);
         mTraceDescSet->updateBuffer(1, DESCRIPTOR_TYPE_UNIFORM_BUFFER, mSettingBuffer, sizeof(GlobalSetting), 0);
+        mTraceDescSet->updateBuffer(2, DESCRIPTOR_TYPE_RW_BUFFER, mSceneBvhNodeBuffer, sizeof(TempBvhNode) * 2, 0);
 
         VertexLayout vertexLayout;
         vertexLayout.attribCount = 2;
         vertexLayout.attribs[0].location = 0;
         vertexLayout.attribs[0].binding = 0;
-        vertexLayout.attribs[0].offset = offsetof(Vertex, pos);
+        vertexLayout.attribs[0].offset = offsetof(QuadVertex, pos);
         vertexLayout.attribs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         vertexLayout.attribs[0].rate = VERTEX_ATTRIB_RATE_VERTEX;
         vertexLayout.attribs[0].semantic = SEMANTIC_POSITION;
 
         vertexLayout.attribs[1].location = 1;
         vertexLayout.attribs[1].binding = 0;
-        vertexLayout.attribs[1].offset = offsetof(Vertex, uv);
+        vertexLayout.attribs[1].offset = offsetof(QuadVertex, uv);
         vertexLayout.attribs[1].format = VK_FORMAT_R32G32_SFLOAT;
         vertexLayout.attribs[1].rate = VERTEX_ATTRIB_RATE_VERTEX;
         vertexLayout.attribs[1].semantic = SEMANTIC_TEXCOORD0;
@@ -296,6 +315,7 @@ namespace star {
     {
         SAFE_DELETE(mTraceTexture);
         SAFE_DELETE(mAccumTexture);
+        SAFE_DELETE(mSceneBvhNodeBuffer);
         SAFE_DELETE(mSettingBuffer);
         SAFE_DELETE(mQuadVertexBuffer);
         SAFE_DELETE(mQuadIndexBuffer);
@@ -336,7 +356,7 @@ namespace star {
         if (Input::instance().getMouseButton(MouseButton::MouseRight))
         {
             mCamera.yaw += offset.x * 0.1f;
-            mCamera.pitch += offset.y * 0.1f;
+            mCamera.pitch -= offset.y * 0.1f;
             glm::vec3 front;
             front.x = cos(glm::radians(mCamera.yaw)) * cos(glm::radians(mCamera.pitch));
             front.y = sin(glm::radians(mCamera.pitch));

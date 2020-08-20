@@ -15,11 +15,11 @@ namespace accel {
     {
         struct Node
         {
-            int leaf;
-            int leftIndex;
-            int rightIndex;
-            glm::vec3 bboxMin;
-            glm::vec3 bboxMax;
+            alignas(16) glm::vec3 bboxMin;
+            alignas(16) glm::vec3 bboxMax;
+            alignas(4) int leaf;
+            alignas(4) int leftIndex;
+            alignas(4) int rightIndex;
         };
     public:
         BvhTranslator();

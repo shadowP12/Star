@@ -5,6 +5,19 @@
 #include <glm/glm.hpp>
 #include <vector>
 namespace star {
+    struct Vertex {
+        alignas(16) glm::vec4 positionUVX;
+        alignas(16) glm::vec4 normalUVY;
+    };
+
+    struct Indices {
+        alignas(16) glm::ivec3 indices;
+    };
+
+    struct Transform {
+        alignas(16) glm::mat4 transform;
+    };
+
     class Mesh
     {
     public:
@@ -44,11 +57,9 @@ namespace star {
         accel::BvhTranslator mBvhTranslator;
         std::vector<Mesh*> mMeshs;
         std::vector<MeshInstance> mMeshInstances;
-        std::vector<glm::ivec3> mVertIndices;
-        std::vector<glm::vec3> mVertices;
-        std::vector<glm::vec3> mNormals;
-        std::vector<glm::vec2> mUV;
-        std::vector<glm::mat4> mTransforms;
+        std::vector<Indices> mIndices;
+        std::vector<Vertex> mVertices;
+        std::vector<Transform> mTransforms;
     };
 }
 
