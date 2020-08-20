@@ -3,8 +3,11 @@
 layout (local_size_x = 16, local_size_y = 16) in;
 
 struct BvhNode {
-    vec3 test1;
-    vec3 test2;
+    vec3 bboxMin;
+    vec3 bboxMax;
+    int leaf;
+    int leftIndex;
+    int rightIndex;
 };
 
 struct Ray {
@@ -72,7 +75,6 @@ void main()
 
         t += d;
     }
-    color = sceneBvhNodes[1].test1;
     vec4 res = vec4(color, 1.0);
     imageStore(traceImage, ivec2(gl_GlobalInvocationID.xy), res);
 }

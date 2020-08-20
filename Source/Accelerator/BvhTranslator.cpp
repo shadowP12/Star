@@ -82,7 +82,6 @@ namespace accel {
         mNodes[mCurNodeIndex].leaf = 0;
 
         int index = mCurNodeIndex;
-
         if(node->type == Bvh::NodeType::Leaf)
         {
             int instanceIndex = mTopBvh->mPackedIndices[node->startIdx];

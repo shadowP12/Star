@@ -13,6 +13,7 @@ namespace accel {
 
     class BvhTranslator
     {
+    public:
         struct Node
         {
             alignas(16) glm::vec3 bboxMin;

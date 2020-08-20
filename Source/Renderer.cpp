@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "Scene.h"
+#include "Accelerator/BvhTranslator.h"
 #include <RHI/RHIDevice.h>
 #include <RHI/RHISwapChain.h>
 #include <RHI/RHICommandBuffer.h>
@@ -17,11 +18,6 @@
 struct QuadVertex {
     glm::vec3 pos;
     glm::vec2 uv;
-};
-
-struct TempBvhNode {
-    alignas(16) glm::vec3 test1;
-    alignas(16) glm::vec3 test2;
 };
 
 static float quadVertices[] =
@@ -131,14 +127,12 @@ namespace star {
         bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
         mSettingBuffer = new RHIBuffer(mDevice, bufferInfo);
 
-        bufferInfo.size = sizeof(TempBvhNode) * 2;
+        int sceneBvhNodeBufferSize = sizeof(accel::BvhTranslator::Node) * mScene->mBvhTranslator.mNodes.size();
+        bufferInfo.size = sceneBvhNodeBufferSize;
         bufferInfo.descriptors = DESCRIPTOR_TYPE_RW_BUFFER;
         bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
         mSceneBvhNodeBuffer = new RHIBuffer(mDevice, bufferInfo);
-        std::vector<TempBvhNode> tempNodes;
-        tempNodes.push_back({glm::vec3(1, 0, 0), glm::vec3(0, 1, 0)});
-        tempNodes.push_back({glm::vec3(0, 1, 0), glm::vec3(1, 1, 1)});
-        mSceneBvhNodeBuffer->writeData(0, sizeof(TempBvhNode) * 2, tempNodes.data());
+        mSceneBvhNodeBuffer->writeData(0, sceneBvhNodeBufferSize, mScene->mBvhTranslator.mNodes.data());
 
         RHITextureInfo textureInfo;
         textureInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -213,7 +207,7 @@ namespace star {
         mTraceDescSet = new RHIDescriptorSet(mDevice, descriptorSetInfo);
         mTraceDescSet->updateTexture(0, DESCRIPTOR_TYPE_RW_TEXTURE, mTraceTexture);
         mTraceDescSet->updateBuffer(1, DESCRIPTOR_TYPE_UNIFORM_BUFFER, mSettingBuffer, sizeof(GlobalSetting), 0);
-        mTraceDescSet->updateBuffer(2, DESCRIPTOR_TYPE_RW_BUFFER, mSceneBvhNodeBuffer, sizeof(TempBvhNode) * 2, 0);
+        mTraceDescSet->updateBuffer(2, DESCRIPTOR_TYPE_RW_BUFFER, mSceneBvhNodeBuffer, sceneBvhNodeBufferSize, 0);
 
         VertexLayout vertexLayout;
         vertexLayout.attribCount = 2;

@@ -53,6 +53,7 @@ namespace star {
         void createBLAS();
         void createTLAS();
     private:
+        friend class Renderer;
         accel::Bvh* mBvh = nullptr;
         accel::BvhTranslator mBvhTranslator;
         std::vector<Mesh*> mMeshs;

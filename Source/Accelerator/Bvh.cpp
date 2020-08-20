@@ -58,13 +58,13 @@ namespace accel {
         int numPrims = req.endIdx - req.startIdx;
         if (numPrims < 2)
         {
+            node->type = NodeType::Leaf;
+            node->startIdx = mPackedIndices.size();
+            node->numPrims = numPrims;
             for (int i = req.startIdx; i < req.endIdx; ++i)
             {
                 mPackedIndices.push_back(primRefs[i].idx);
             }
-            node->type = NodeType::Leaf;
-            node->startIdx = mPackedIndices.size();
-            node->numPrims = numPrims;
             return node;
         }
         else
