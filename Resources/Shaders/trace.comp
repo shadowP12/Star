@@ -15,6 +15,10 @@ struct Ray {
     vec3 direction;
 };
 
+struct IntersectData {
+    int meshIdx;
+};
+
 layout (binding = 0, rgba32f) uniform image2D traceImage;
 
 layout(binding = 1) uniform GlobalSetting {
@@ -24,12 +28,34 @@ layout(binding = 1) uniform GlobalSetting {
     vec3 cameraFront;
     vec4 cameraParam;
     vec4 screenParam;
+    int sceneBvhRootIndex;
 } globalSetting;
 
 layout(std140, binding = 2) buffer SceneBvhNodeBuffer
 {
     BvhNode sceneBvhNodes[ ];
 };
+
+layout(std140, binding = 3) buffer SceneTransformBuffer
+{
+    mat4 sceneTransforms[ ];
+};
+
+float intersectAABB(vec3 minCorner, vec3 maxCorner, Ray r)
+{
+    vec3 invdir = 1.0 / r.direction;
+
+    vec3 f = (maxCorner - r.origin) * invdir;
+    vec3 n = (minCorner - r.origin) * invdir;
+
+    vec3 tmax = max(f, n);
+    vec3 tmin = min(f, n);
+
+    float t1 = min(tmax.x, min(tmax.y, tmax.z));
+    float t0 = max(tmin.x, max(tmin.y, tmin.z));
+
+    return (t1 >= t0) ? (t0 > 0.f ? t0 : t1) : -1.0;
+}
 
 Ray genCameraRay()
 {
@@ -55,25 +81,95 @@ Ray genCameraRay()
     return ray;
 }
 
+bool hit(Ray ray, inout IntersectData isect)
+{
+    int stack[64];
+    int stackFlag = 0;
+    stack[stackFlag++] = -1;
+    int nodeIdx = globalSetting.sceneBvhRootIndex;
+    float leftHit = 0.0;
+    float rightHit = 0.0;
+    int curMeshIdx = 0;
+    bool downBvh = false;
+    Ray transformRay = ray;
+    isect.meshIdx = 0;
+    while(nodeIdx > -1 || downBvh)
+    {
+        if(downBvh && nodeIdx < 0)
+        {
+            downBvh = false;
+            nodeIdx = stack[--stackFlag];
+            transformRay = ray;
+            continue;
+        }
+
+        BvhNode node = sceneBvhNodes[nodeIdx];
+        if(node.leaf == 1)
+        {
+            isect.meshIdx = curMeshIdx;
+            return true;
+        }
+        else if(node.leaf == 2)
+        {
+            nodeIdx = node.leftIndex;
+            curMeshIdx = node.rightIndex;
+            downBvh = true;
+            stack[stackFlag++] = -1;
+            mat4 transform = sceneTransforms[curMeshIdx];
+            transformRay.origin = vec3(inverse(transform) * vec4(ray.origin, 1.0));
+            transformRay.direction = vec3(inverse(transform) * vec4(ray.direction, 0.0));
+            continue;
+        }
+        else
+        {
+            BvhNode lc = sceneBvhNodes[node.leftIndex];
+            BvhNode rc = sceneBvhNodes[node.rightIndex];
+
+            leftHit = intersectAABB(lc.bboxMin, lc.bboxMax, transformRay);
+            rightHit = intersectAABB(rc.bboxMin, rc.bboxMax, transformRay);
+            if (leftHit > 0.0 && rightHit > 0.0)
+            {
+                int deferred = -1;
+                if (leftHit > rightHit)
+                {
+                    nodeIdx = node.rightIndex;
+                    deferred = node.leftIndex;
+                }
+                else
+                {
+                    nodeIdx = node.leftIndex;
+                    deferred = node.rightIndex;
+                }
+
+                stack[stackFlag++] = deferred;
+                continue;
+            }
+            else if (leftHit > 0.0)
+            {
+                nodeIdx = node.leftIndex;
+                continue;
+            }
+            else if (rightHit > 0.0)
+            {
+                nodeIdx = node.rightIndex;
+                continue;
+            }
+        }
+        nodeIdx = stack[--stackFlag];
+    }
+
+    return false;
+}
+
 void main()
 {
     Ray ray = genCameraRay();
-    vec3 ro = ray.origin;
-    vec3 rd = ray.direction;
     vec3 color = vec3(0.0);
-    float t = 0.0;
-    int maxSteps = 32;
-    for(int i = 0; i < maxSteps; ++i)
+    IntersectData isect;
+    if(hit(ray, isect))
     {
-        vec3 p = ro + rd * t;
-        float d = length(p - vec3(0.0, 2.0, -10.0)) - 2.0;
-        if(d < 0.001)
-        {
-            color = vec3(1.0);
-            break;
-        }
-
-        t += d;
+        float xx = float(isect.meshIdx);
+        color = vec3(xx / 10.0, xx / 10.0, xx / 10.0);
     }
     vec4 res = vec4(color, 1.0);
     imageStore(traceImage, ivec2(gl_GlobalInvocationID.xy), res);

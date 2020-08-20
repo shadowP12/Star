@@ -134,6 +134,13 @@ namespace star {
         mSceneBvhNodeBuffer = new RHIBuffer(mDevice, bufferInfo);
         mSceneBvhNodeBuffer->writeData(0, sceneBvhNodeBufferSize, mScene->mBvhTranslator.mNodes.data());
 
+        int sceneTransformBufferSize = sizeof(Transform) * mScene->mTransforms.size();
+        bufferInfo.size = sceneTransformBufferSize;
+        bufferInfo.descriptors = DESCRIPTOR_TYPE_RW_BUFFER;
+        bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+        mSceneTransformBuffer = new RHIBuffer(mDevice, bufferInfo);
+        mSceneTransformBuffer->writeData(0, sceneTransformBufferSize, mScene->mTransforms.data());
+
         RHITextureInfo textureInfo;
         textureInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
         textureInfo.descriptors = DESCRIPTOR_TYPE_TEXTURE | DESCRIPTOR_TYPE_RW_TEXTURE;
@@ -191,7 +198,7 @@ namespace star {
         mAccumDescSet->updateTexture(1, DESCRIPTOR_TYPE_RW_TEXTURE, mAccumTexture);
 
         descriptorSetInfo.set = 0;
-        descriptorSetInfo.bindingCount = 3;
+        descriptorSetInfo.bindingCount = 4;
         descriptorSetInfo.bindings[0].binding = 0;
         descriptorSetInfo.bindings[0].descriptorCount = 1;
         descriptorSetInfo.bindings[0].type = DESCRIPTOR_TYPE_RW_TEXTURE;
@@ -204,10 +211,15 @@ namespace star {
         descriptorSetInfo.bindings[2].descriptorCount = 1;
         descriptorSetInfo.bindings[2].type = DESCRIPTOR_TYPE_RW_BUFFER;
         descriptorSetInfo.bindings[2].stage = PROGRAM_COMPUTE;
+        descriptorSetInfo.bindings[3].binding = 3;
+        descriptorSetInfo.bindings[3].descriptorCount = 1;
+        descriptorSetInfo.bindings[3].type = DESCRIPTOR_TYPE_RW_BUFFER;
+        descriptorSetInfo.bindings[3].stage = PROGRAM_COMPUTE;
         mTraceDescSet = new RHIDescriptorSet(mDevice, descriptorSetInfo);
         mTraceDescSet->updateTexture(0, DESCRIPTOR_TYPE_RW_TEXTURE, mTraceTexture);
         mTraceDescSet->updateBuffer(1, DESCRIPTOR_TYPE_UNIFORM_BUFFER, mSettingBuffer, sizeof(GlobalSetting), 0);
         mTraceDescSet->updateBuffer(2, DESCRIPTOR_TYPE_RW_BUFFER, mSceneBvhNodeBuffer, sceneBvhNodeBufferSize, 0);
+        mTraceDescSet->updateBuffer(3, DESCRIPTOR_TYPE_RW_BUFFER, mSceneTransformBuffer, sceneTransformBufferSize, 0);
 
         VertexLayout vertexLayout;
         vertexLayout.attribCount = 2;
@@ -309,6 +321,7 @@ namespace star {
     {
         SAFE_DELETE(mTraceTexture);
         SAFE_DELETE(mAccumTexture);
+        SAFE_DELETE(mSceneTransformBuffer);
         SAFE_DELETE(mSceneBvhNodeBuffer);
         SAFE_DELETE(mSettingBuffer);
         SAFE_DELETE(mQuadVertexBuffer);
@@ -339,6 +352,7 @@ namespace star {
         globalSetting.cameraFront = mCamera.front;
         globalSetting.cameraParam = glm::vec4(mCamera.fov, mCamera.focalDist, mCamera.aperture, 0.0f);
         globalSetting.screenParam = glm::vec4((float)mWidth, (float)mHeight, 0.0f, 0.0f);
+        globalSetting.sceneBvhRootIndex = mScene->mBvhTranslator.mTopIndex;
         mSettingBuffer->writeData(0, sizeof(globalSetting), &globalSetting);
     }
 

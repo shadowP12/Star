@@ -25,6 +25,7 @@ namespace star {
         alignas(16) glm::vec3 cameraFront;
         alignas(16) glm::vec4 cameraParam;
         alignas(16) glm::vec4 screenParam;
+        alignas(4) int sceneBvhRootIndex;
     };
 
     struct Camera
@@ -75,6 +76,7 @@ namespace star {
         RHIBuffer* mQuadIndexBuffer = nullptr;
         RHIBuffer* mSettingBuffer = nullptr;
         RHIBuffer* mSceneBvhNodeBuffer = nullptr;
+        RHIBuffer* mSceneTransformBuffer = nullptr;
         RHITexture* mTraceTexture = nullptr;
         RHITexture* mAccumTexture = nullptr;
         RHISampler* mDefaultSampler = nullptr;
