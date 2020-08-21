@@ -6,12 +6,16 @@
 #include <vector>
 namespace star {
     struct Vertex {
-        alignas(16) glm::vec4 positionUVX;
-        alignas(16) glm::vec4 normalUVY;
+        alignas(16) glm::vec3 position;
+        alignas(16) glm::vec3 normal;
+        alignas(4) glm::vec2 uv;
     };
 
-    struct Indices {
-        alignas(16) glm::ivec3 indices;
+    struct Index {
+        alignas(4) int idx0;
+        alignas(4) int idx1;
+        alignas(4) int idx2;
+        alignas(4) int padding;
     };
 
     struct Transform {
@@ -58,7 +62,7 @@ namespace star {
         accel::BvhTranslator mBvhTranslator;
         std::vector<Mesh*> mMeshs;
         std::vector<MeshInstance> mMeshInstances;
-        std::vector<Indices> mIndices;
+        std::vector<Index> mIndices;
         std::vector<Vertex> mVertices;
         std::vector<Transform> mTransforms;
     };

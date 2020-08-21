@@ -73,13 +73,13 @@ namespace accel {
             int mid = (req.endIdx - req.startIdx) / 2;
             if (req.centroidBound.mMax[dim] == req.centroidBound.mMin[dim])
             {
+                node->type = NodeType::Leaf;
+                node->startIdx = mPackedIndices.size();
+                node->numPrims = numPrims;
                 for (int i = req.startIdx; i < req.endIdx; ++i)
                 {
                     mPackedIndices.push_back(primRefs[i].idx);
                 }
-                node->type = NodeType::Leaf;
-                node->startIdx = mPackedIndices.size();
-                node->numPrims = numPrims;
                 return node;
             }
             float midValue = (req.centroidBound.mMax[dim] + req.centroidBound.mMin[dim]) * 0.5f;

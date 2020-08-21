@@ -110,15 +110,15 @@ namespace star {
                 int v1 = (index * 3 + 0) + verticesCount;
                 int v2 = (index * 3 + 1) + verticesCount;
                 int v3 = (index * 3 + 2) + verticesCount;
-
-                mIndices.push_back({ glm::ivec3(v1, v2, v3) });
+                mIndices.push_back({ v1, v2, v3 });
             }
 
             for (int j = 0; j < mMeshs[i]->mVertices.size(); ++j)
             {
                 Vertex vertex;
-                vertex.positionUVX = glm::vec4(mMeshs[i]->mVertices[j].x, mMeshs[i]->mVertices[j].y, mMeshs[i]->mVertices[j].z, mMeshs[i]->mUVs[j].x);
-                vertex.normalUVY = glm::vec4(mMeshs[i]->mNormals[j].x, mMeshs[i]->mNormals[j].y, mMeshs[i]->mNormals[j].z, mMeshs[i]->mUVs[j].y);
+                vertex.position = mMeshs[i]->mVertices[j];//glm::vec3(mMeshs[i]->mVertices[j].x, mMeshs[i]->mVertices[j].y, mMeshs[i]->mVertices[j].z);
+                vertex.normal = glm::vec3(mMeshs[i]->mNormals[j].x, mMeshs[i]->mNormals[j].y, mMeshs[i]->mNormals[j].z);
+                vertex.uv = glm::vec2(mMeshs[i]->mUVs[j].x, mMeshs[i]->mUVs[j].y);
                 mVertices.push_back(vertex);
             }
 
@@ -134,11 +134,28 @@ namespace star {
         for (int i = 0; i < mMeshInstances.size(); i++)
         {
             accel::BBox bbox = mMeshs[mMeshInstances[i].meshIdx]->mBvh->getBound();
-            glm::vec3 tempMin = transformPoint(bbox.mMin, mMeshInstances[i].transform);
-            glm::vec3 tempMax = transformPoint(bbox.mMax, mMeshInstances[i].transform);
 
-            glm::vec3 minBound = glm::vec3(glm::min(tempMin.x, tempMax.x), glm::min(tempMin.y, tempMax.y), glm::min(tempMin.z, tempMax.z));
-            glm::vec3 maxBound = glm::vec3(glm::max(tempMin.x, tempMax.x), glm::max(tempMin.y, tempMax.y), glm::max(tempMin.z, tempMax.z));
+            glm::mat4 matrix = mMeshInstances[i].transform;
+
+            glm::vec3 minBound = bbox.mMin;
+            glm::vec3 maxBound = bbox.mMax;
+
+            glm::vec3 right       = glm::vec3(matrix[0][0], matrix[0][1], matrix[0][2]);
+            glm::vec3 up          = glm::vec3(matrix[1][0], matrix[1][1], matrix[1][2]);
+            glm::vec3 forward     = glm::vec3(matrix[2][0], matrix[2][1], matrix[2][2]);
+            glm::vec3 translation = glm::vec3(matrix[3][0], matrix[3][1], matrix[3][2]);
+
+            glm::vec3 xa = right * minBound.x;
+            glm::vec3 xb = right * maxBound.x;
+
+            glm::vec3 ya = up * minBound.y;
+            glm::vec3 yb = up * maxBound.y;
+
+            glm::vec3 za = forward * minBound.z;
+            glm::vec3 zb = forward * maxBound.z;
+
+            minBound = glm::min(xa, xb) + glm::min(ya, yb) + glm::min(za, zb) + translation;
+            maxBound = glm::max(xa, xb) + glm::max(ya, yb) + glm::max(za, zb) + translation;
 
             accel::BBox bound;
             bound.mMin = minBound;

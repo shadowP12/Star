@@ -17,6 +17,24 @@ struct Ray {
 
 struct IntersectData {
     int meshIdx;
+    bool hit;
+    float hitDist;
+    ivec3 triIdx;
+    vec3 bary;
+    vec3 hitPosition;
+    vec3 normal;
+};
+
+struct Vertex {
+    vec3 position;
+    vec3 normal;
+    vec2 uv;
+};
+
+struct Index {
+    int idx0;
+    int idx1;
+    int idx2;
 };
 
 layout (binding = 0, rgba32f) uniform image2D traceImage;
@@ -39,6 +57,16 @@ layout(std140, binding = 2) buffer SceneBvhNodeBuffer
 layout(std140, binding = 3) buffer SceneTransformBuffer
 {
     mat4 sceneTransforms[ ];
+};
+
+layout(std140, binding = 4) buffer SceneIndexBuffer
+{
+    Index sceneIndices[ ];
+};
+
+layout(std140, binding = 5) buffer SceneVertexBuffer
+{
+    Vertex sceneVertices[ ];
 };
 
 float intersectAABB(vec3 minCorner, vec3 maxCorner, Ray r)
@@ -67,8 +95,8 @@ Ray genCameraRay()
     float fov = 45.0 * 3.1415926 / 180.0;
     float angle = tan(0.5 * fov);
 
-    float x = float(gl_GlobalInvocationID.x) - 0.5;
-    float y = float(gl_GlobalInvocationID.y) - 0.5;
+    float x = float(gl_GlobalInvocationID.x);
+    float y = float(gl_GlobalInvocationID.y);
 
     x = (2.0f * ((x + 0.5f) * invWidth) - 1) * angle * aspectratio;
     y = (1.0f - 2.0f * ((y + 0.5f) * invHeight)) * angle;
@@ -81,8 +109,9 @@ Ray genCameraRay()
     return ray;
 }
 
-bool hit(Ray ray, inout IntersectData isect)
+void hit(Ray ray, inout IntersectData isect)
 {
+    float closestDist = 10000000.0;
     int stack[64];
     int stackFlag = 0;
     stack[stackFlag++] = -1;
@@ -91,23 +120,67 @@ bool hit(Ray ray, inout IntersectData isect)
     float rightHit = 0.0;
     int curMeshIdx = 0;
     bool downBvh = false;
-    Ray transformRay = ray;
+    mat4 tempTransform;
+    Ray transformRay;
+    transformRay.origin = ray.origin;
+    transformRay.direction = ray.direction;
     isect.meshIdx = 0;
+    isect.hit = false;
     while(nodeIdx > -1 || downBvh)
     {
         if(downBvh && nodeIdx < 0)
         {
             downBvh = false;
             nodeIdx = stack[--stackFlag];
-            transformRay = ray;
+            transformRay.origin = ray.origin;
+            transformRay.direction = ray.direction;
             continue;
         }
-
         BvhNode node = sceneBvhNodes[nodeIdx];
         if(node.leaf == 1)
         {
-            isect.meshIdx = curMeshIdx;
-            return true;
+            for (int i = 0; i < node.rightIndex; i++)
+            {
+                Index triIndices = sceneIndices[node.leftIndex + i];
+                vec3 v0 = sceneVertices[triIndices.idx0].position;
+                vec3 v1 = sceneVertices[triIndices.idx1].position;
+                vec3 v2 = sceneVertices[triIndices.idx2].position;
+
+                vec3 e0 = v1 - v0;
+                vec3 e1 = v2 - v0;
+                vec3 p = cross(transformRay.direction, e1);
+                float a = dot(e0, p);
+                if(abs(a) < 0.0001)
+                    continue;
+                float f = 1.0 / a;
+                vec3 s = transformRay.origin - v0;
+                float u = f * dot(s, p);
+
+                if(u < 0.0 || u > 1.0)
+                    continue;
+                vec3 q = cross(s, e0);
+                float v = f * dot(transformRay.direction, q);
+                if(v < 0.0 || (u + v) > 1.0)
+                    continue;
+                float t = dot(e1, q) * f;
+                if(t > 0.0 && t < closestDist)
+                {
+                    closestDist = t;
+                    isect.hit = true;
+                    isect.hitDist = t;
+                    isect.meshIdx = curMeshIdx;
+                    isect.triIdx = ivec3(triIndices.idx0, triIndices.idx1, triIndices.idx2);
+                    isect.bary = vec3(u, v, 1.0 - u - v);
+                    isect.hitPosition = transformRay.origin + transformRay.direction * t;
+                    isect.hitPosition = vec3(tempTransform * vec4(isect.hitPosition, 1.0));
+                    vec3 n0 = sceneVertices[triIndices.idx0].normal;
+                    vec3 n1 = sceneVertices[triIndices.idx1].normal;
+                    vec3 n2 = sceneVertices[triIndices.idx2].normal;
+                    vec3 normal = normalize(n0 * u + n1 * v + n2 * (1.0 - u - v));
+                    mat3 normalMatrix = transpose(inverse(mat3(tempTransform)));
+                    isect.normal = normalize(normalMatrix * normal);
+                }
+            }
         }
         else if(node.leaf == 2)
         {
@@ -115,9 +188,9 @@ bool hit(Ray ray, inout IntersectData isect)
             curMeshIdx = node.rightIndex;
             downBvh = true;
             stack[stackFlag++] = -1;
-            mat4 transform = sceneTransforms[curMeshIdx];
-            transformRay.origin = vec3(inverse(transform) * vec4(ray.origin, 1.0));
-            transformRay.direction = vec3(inverse(transform) * vec4(ray.direction, 0.0));
+            tempTransform = sceneTransforms[curMeshIdx];
+            transformRay.origin = vec3(inverse(tempTransform) * vec4(ray.origin, 1.0));
+            transformRay.direction = vec3(inverse(tempTransform) * vec4(ray.direction, 0.0));
             continue;
         }
         else
@@ -127,6 +200,7 @@ bool hit(Ray ray, inout IntersectData isect)
 
             leftHit = intersectAABB(lc.bboxMin, lc.bboxMax, transformRay);
             rightHit = intersectAABB(rc.bboxMin, rc.bboxMax, transformRay);
+
             if (leftHit > 0.0 && rightHit > 0.0)
             {
                 int deferred = -1;
@@ -140,16 +214,15 @@ bool hit(Ray ray, inout IntersectData isect)
                     nodeIdx = node.leftIndex;
                     deferred = node.rightIndex;
                 }
-
                 stack[stackFlag++] = deferred;
                 continue;
             }
-            else if (leftHit > 0.0)
+            else if (leftHit > 0.)
             {
                 nodeIdx = node.leftIndex;
                 continue;
             }
-            else if (rightHit > 0.0)
+            else if (rightHit > 0.)
             {
                 nodeIdx = node.rightIndex;
                 continue;
@@ -157,8 +230,6 @@ bool hit(Ray ray, inout IntersectData isect)
         }
         nodeIdx = stack[--stackFlag];
     }
-
-    return false;
 }
 
 void main()
@@ -166,10 +237,43 @@ void main()
     Ray ray = genCameraRay();
     vec3 color = vec3(0.0);
     IntersectData isect;
-    if(hit(ray, isect))
+    hit(ray, isect);
+
+    if(isect.hit)
     {
-        float xx = float(isect.meshIdx);
-        color = vec3(xx / 10.0, xx / 10.0, xx / 10.0);
+        if(isect.meshIdx == 0)
+        {
+            color = vec3(1.0, 0.5, 0.5);
+        }
+        else if(isect.meshIdx == 1)
+        {
+            color = vec3(1.0, 0.0, 1.0);
+        }
+        else if(isect.meshIdx == 2)
+        {
+            color = vec3(1.0, 1.0, 0.0);
+        }
+        else if(isect.meshIdx == 3)
+        {
+            color = vec3(0.0, 1.0, 1.0);
+        }
+        else if(isect.meshIdx == 4)
+        {
+            color = vec3(1.0, 1.0, 0.1);
+        }
+        else if(isect.meshIdx == 5)
+        {
+            color = vec3(0.5, 0.6, 1.0);
+        }
+        else if(isect.meshIdx == 6)
+        {
+            color = vec3(1.0, 0.7, 0.1);
+        }
+        else
+        {
+            color = vec3(1.0, 1.0, 1.0);
+        }
+        //color = isect.hitPosition;
     }
     vec4 res = vec4(color, 1.0);
     imageStore(traceImage, ivec2(gl_GlobalInvocationID.xy), res);

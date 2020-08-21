@@ -77,6 +77,8 @@ namespace star {
         RHIBuffer* mSettingBuffer = nullptr;
         RHIBuffer* mSceneBvhNodeBuffer = nullptr;
         RHIBuffer* mSceneTransformBuffer = nullptr;
+        RHIBuffer* mSceneIndexBuffer = nullptr;
+        RHIBuffer* mSceneVertexBuffer = nullptr;
         RHITexture* mTraceTexture = nullptr;
         RHITexture* mAccumTexture = nullptr;
         RHISampler* mDefaultSampler = nullptr;
