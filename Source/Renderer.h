@@ -26,6 +26,13 @@ namespace star {
         alignas(16) glm::vec4 cameraParam;
         alignas(16) glm::vec4 screenParam;
         alignas(4) int sceneBvhRootIndex;
+        alignas(4) int sampleCounter;
+    };
+
+    struct AccumSetting
+    {
+        alignas(4) int dirtyFlag;
+        alignas(4) int sampleCounter;
     };
 
     struct Camera
@@ -56,6 +63,8 @@ namespace star {
     protected:
         uint32_t mWidth;
         uint32_t mHeight;
+        int mDirtyFlag;
+        int mSampleCounter;
         Camera mCamera;
         Scene* mScene;
         RHIDevice* mDevice = nullptr;
@@ -74,13 +83,15 @@ namespace star {
         RHIDescriptorSet* mAccumDescSet = nullptr;
         RHIBuffer* mQuadVertexBuffer = nullptr;
         RHIBuffer* mQuadIndexBuffer = nullptr;
+        RHIBuffer* mAccumSettingBuffer = nullptr;
         RHIBuffer* mSettingBuffer = nullptr;
         RHIBuffer* mSceneBvhNodeBuffer = nullptr;
-        RHIBuffer* mSceneTransformBuffer = nullptr;
+        RHIBuffer* mSceneObjectBuffer = nullptr;
         RHIBuffer* mSceneIndexBuffer = nullptr;
         RHIBuffer* mSceneVertexBuffer = nullptr;
         RHITexture* mTraceTexture = nullptr;
         RHITexture* mAccumTexture = nullptr;
+        RHITexture* mOutputTexture = nullptr;
         RHISampler* mDefaultSampler = nullptr;
     };
 }

@@ -5,6 +5,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
+
 namespace star {
     // cgltf helper funcs
     int getCNodeInxFromCData(const cgltf_node* node, const cgltf_data* data);
@@ -33,12 +34,16 @@ namespace star {
         for (int i = 0; i < data->meshes_count; ++i)
         {
             cgltf_mesh* cMesh = &data->meshes[i];
+            if(cMesh->primitives_count < 1)
+                continue;
             std::vector<glm::vec3> positionBuffer;
             std::vector<glm::vec2> texcoordBuffer;
             std::vector<glm::vec3> normalBuffer;
             std::vector<uint32_t> indexBuffer;
             uint32_t indexStart = 0;
             uint32_t indexCount = 0;
+
+            cgltf_material* cMaterial = cMesh->primitives[0].material;
 
             for (int i = 0; i < cMesh->primitives_count; i++)
             {
@@ -154,6 +159,15 @@ namespace star {
                 mesh->mNormals.push_back(normalBuffer[index]);
                 mesh->mUVs.push_back(texcoordBuffer[index]);
             }
+
+            mesh->mAlbedo = glm::vec3(cMaterial->pbr_metallic_roughness.base_color_factor[0],
+                                      cMaterial->pbr_metallic_roughness.base_color_factor[1],
+                                      cMaterial->pbr_metallic_roughness.base_color_factor[2]);
+            mesh->mEmission = glm::vec3(cMaterial->emissive_factor[0],
+                                        cMaterial->emissive_factor[1],
+                                        cMaterial->emissive_factor[2]);
+            mesh->mMetallic = cMaterial->pbr_metallic_roughness.metallic_factor;
+            mesh->mRoughness = cMaterial->pbr_metallic_roughness.roughness_factor;
 
             result.meshs.push_back(mesh);
             meshHelper[cMesh] = mesh;

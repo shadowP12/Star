@@ -3,9 +3,9 @@
 
 layout(location = 0) in vec2 texCoord;
 layout(location = 0) out vec4 outColor;
-layout(binding = 0) uniform sampler2D accumTexture;
+layout(binding = 0) uniform sampler2D outputTexture;
 
 void main()
 {
-    outColor = texture(accumTexture, texCoord);
+    outColor = texture(outputTexture, texCoord);
 }

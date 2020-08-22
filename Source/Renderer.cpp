@@ -41,6 +41,7 @@ namespace star {
         mScene = scene;
         mWidth = width;
         mHeight = height;
+        mSampleCounter = 1;
         SpirvManager::startUp();
     }
 
@@ -122,6 +123,11 @@ namespace star {
         mQuadIndexBuffer = new RHIBuffer(mDevice, bufferInfo);
         mQuadIndexBuffer->writeData(0, sizeof(quadIndices), quadIndices);
 
+        bufferInfo.size = sizeof(AccumSetting);
+        bufferInfo.descriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+        mAccumSettingBuffer = new RHIBuffer(mDevice, bufferInfo);
+
         bufferInfo.size = sizeof(GlobalSetting);
         bufferInfo.descriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
@@ -134,12 +140,12 @@ namespace star {
         mSceneBvhNodeBuffer = new RHIBuffer(mDevice, bufferInfo);
         mSceneBvhNodeBuffer->writeData(0, sceneBvhNodeBufferSize, mScene->mBvhTranslator.mNodes.data());
 
-        int sceneTransformBufferSize = sizeof(Transform) * mScene->mTransforms.size();
-        bufferInfo.size = sceneTransformBufferSize;
+        int sceneObjectBufferSize = sizeof(SceneObject) * mScene->mSceneObjects.size();
+        bufferInfo.size = sceneObjectBufferSize;
         bufferInfo.descriptors = DESCRIPTOR_TYPE_RW_BUFFER;
         bufferInfo.memoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
-        mSceneTransformBuffer = new RHIBuffer(mDevice, bufferInfo);
-        mSceneTransformBuffer->writeData(0, sceneTransformBufferSize, mScene->mTransforms.data());
+        mSceneObjectBuffer = new RHIBuffer(mDevice, bufferInfo);
+        mSceneObjectBuffer->writeData(0, sceneObjectBufferSize, mScene->mSceneObjects.data());
 
         int sceneIndexBufferSize = sizeof(Index) * mScene->mIndices.size();
         bufferInfo.size = sceneIndexBufferSize;
@@ -157,7 +163,7 @@ namespace star {
 
         RHITextureInfo textureInfo;
         textureInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
-        textureInfo.descriptors = DESCRIPTOR_TYPE_TEXTURE | DESCRIPTOR_TYPE_RW_TEXTURE;
+        textureInfo.descriptors = DESCRIPTOR_TYPE_RW_TEXTURE;
         textureInfo.width = mWidth;
         textureInfo.height = mHeight;
         textureInfo.depth = 1;
@@ -174,10 +180,20 @@ namespace star {
         textureInfo.arrayLayers = 1;
         mTraceTexture = new RHITexture(mDevice, textureInfo);
 
+        textureInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+        textureInfo.descriptors = DESCRIPTOR_TYPE_TEXTURE | DESCRIPTOR_TYPE_RW_TEXTURE;
+        textureInfo.width = mWidth;
+        textureInfo.height = mHeight;
+        textureInfo.depth = 1;
+        textureInfo.mipLevels = 1;
+        textureInfo.arrayLayers = 1;
+        mOutputTexture = new RHITexture(mDevice, textureInfo);
+
         cmdBuf->begin();
         RHITextureBarrier barriers[] = { { mAccumTexture, RESOURCE_STATE_COMMON },
-                                       { mTraceTexture, RESOURCE_STATE_COMMON } };
-        cmdBuf->setResourceBarrier(0, nullptr, 2, barriers);
+                                       { mTraceTexture, RESOURCE_STATE_COMMON },
+                                       { mOutputTexture, RESOURCE_STATE_COMMON }};
+        cmdBuf->setResourceBarrier(0, nullptr, 3, barriers);
         cmdBuf->end();
         RHIQueueSubmitInfo submitInfo;
         submitInfo.cmdBuf = cmdBuf;
@@ -195,10 +211,10 @@ namespace star {
         descriptorSetInfo.bindings[0].type = DESCRIPTOR_TYPE_TEXTURE;
         descriptorSetInfo.bindings[0].stage = PROGRAM_FRAGMENT;
         mDisplayDescSet = new RHIDescriptorSet(mDevice, descriptorSetInfo);
-        mDisplayDescSet->updateTexture(0, DESCRIPTOR_TYPE_TEXTURE, mAccumTexture, mDefaultSampler);
+        mDisplayDescSet->updateTexture(0, DESCRIPTOR_TYPE_TEXTURE, mOutputTexture, mDefaultSampler);
 
         descriptorSetInfo.set = 0;
-        descriptorSetInfo.bindingCount = 2;
+        descriptorSetInfo.bindingCount = 4;
         descriptorSetInfo.bindings[0].binding = 0;
         descriptorSetInfo.bindings[0].descriptorCount = 1;
         descriptorSetInfo.bindings[0].type = DESCRIPTOR_TYPE_RW_TEXTURE;
@@ -207,9 +223,19 @@ namespace star {
         descriptorSetInfo.bindings[1].descriptorCount = 1;
         descriptorSetInfo.bindings[1].type = DESCRIPTOR_TYPE_RW_TEXTURE;
         descriptorSetInfo.bindings[1].stage = PROGRAM_COMPUTE;
+        descriptorSetInfo.bindings[2].binding = 2;
+        descriptorSetInfo.bindings[2].descriptorCount = 1;
+        descriptorSetInfo.bindings[2].type = DESCRIPTOR_TYPE_RW_TEXTURE;
+        descriptorSetInfo.bindings[2].stage = PROGRAM_COMPUTE;
+        descriptorSetInfo.bindings[3].binding = 3;
+        descriptorSetInfo.bindings[3].descriptorCount = 1;
+        descriptorSetInfo.bindings[3].type = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorSetInfo.bindings[3].stage = PROGRAM_COMPUTE;
         mAccumDescSet = new RHIDescriptorSet(mDevice, descriptorSetInfo);
         mAccumDescSet->updateTexture(0, DESCRIPTOR_TYPE_RW_TEXTURE, mTraceTexture);
         mAccumDescSet->updateTexture(1, DESCRIPTOR_TYPE_RW_TEXTURE, mAccumTexture);
+        mAccumDescSet->updateTexture(2, DESCRIPTOR_TYPE_RW_TEXTURE, mOutputTexture);
+        mAccumDescSet->updateBuffer(3, DESCRIPTOR_TYPE_UNIFORM_BUFFER, mAccumSettingBuffer, sizeof(AccumSetting), 0);
 
         descriptorSetInfo.set = 0;
         descriptorSetInfo.bindingCount = 6;
@@ -241,7 +267,7 @@ namespace star {
         mTraceDescSet->updateTexture(0, DESCRIPTOR_TYPE_RW_TEXTURE, mTraceTexture);
         mTraceDescSet->updateBuffer(1, DESCRIPTOR_TYPE_UNIFORM_BUFFER, mSettingBuffer, sizeof(GlobalSetting), 0);
         mTraceDescSet->updateBuffer(2, DESCRIPTOR_TYPE_RW_BUFFER, mSceneBvhNodeBuffer, sceneBvhNodeBufferSize, 0);
-        mTraceDescSet->updateBuffer(3, DESCRIPTOR_TYPE_RW_BUFFER, mSceneTransformBuffer, sceneTransformBufferSize, 0);
+        mTraceDescSet->updateBuffer(3, DESCRIPTOR_TYPE_RW_BUFFER, mSceneObjectBuffer, sceneObjectBufferSize, 0);
         mTraceDescSet->updateBuffer(4, DESCRIPTOR_TYPE_RW_BUFFER, mSceneIndexBuffer, sceneIndexBufferSize, 0);
         mTraceDescSet->updateBuffer(5, DESCRIPTOR_TYPE_RW_BUFFER, mSceneVertexBuffer, sceneVertexBufferSize, 0);
 
@@ -288,7 +314,11 @@ namespace star {
         uint32_t imageIndex;
         mSwapChain->acquireNextImage(mImageAvailableSemaphore, nullptr, imageIndex);
         // update date
-        int cameraDirtyFlag = updateCamera();
+        mDirtyFlag = updateCamera();
+        if(mDirtyFlag > 0)
+        {
+            mSampleCounter = 1;
+        }
         updateGlobalSetting();
 
         RHICommandBuffer* cmdBuf = mDevice->getGraphicsCommandPool()->getActiveCmdBuffer();
@@ -339,15 +369,18 @@ namespace star {
         presentInfo.waitSemaphores = &mRenderFinishedSemaphore;
         presentInfo.waitSemaphoreCount = 1;
         mDevice->getGraphicsQueue()->Present(presentInfo);
+        mSampleCounter++;
     }
 
     void Renderer::finish()
     {
         SAFE_DELETE(mTraceTexture);
         SAFE_DELETE(mAccumTexture);
+        SAFE_DELETE(mOutputTexture);
+        SAFE_DELETE(mAccumSettingBuffer);
         SAFE_DELETE(mSceneIndexBuffer);
         SAFE_DELETE(mSceneVertexBuffer);
-        SAFE_DELETE(mSceneTransformBuffer);
+        SAFE_DELETE(mSceneObjectBuffer);
         SAFE_DELETE(mSceneBvhNodeBuffer);
         SAFE_DELETE(mSettingBuffer);
         SAFE_DELETE(mQuadVertexBuffer);
@@ -379,7 +412,13 @@ namespace star {
         globalSetting.cameraParam = glm::vec4(mCamera.fov, mCamera.focalDist, mCamera.aperture, 0.0f);
         globalSetting.screenParam = glm::vec4((float)mWidth, (float)mHeight, 0.0f, 0.0f);
         globalSetting.sceneBvhRootIndex = mScene->mBvhTranslator.mTopIndex;
+        globalSetting.sampleCounter = mSampleCounter;
         mSettingBuffer->writeData(0, sizeof(globalSetting), &globalSetting);
+
+        AccumSetting accumSetting;
+        accumSetting.dirtyFlag = mDirtyFlag;
+        accumSetting.sampleCounter = mSampleCounter;
+        mAccumSettingBuffer->writeData(0, sizeof(accumSetting), &accumSetting);
     }
 
     int Renderer::updateCamera()

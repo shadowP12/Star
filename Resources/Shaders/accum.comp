@@ -3,9 +3,23 @@
 layout (local_size_x = 16, local_size_y = 16) in;
 layout (binding = 0, rgba32f) uniform image2D traceImage;
 layout (binding = 1, rgba32f) uniform image2D accumImage;
+layout (binding = 2, rgba32f) uniform image2D outputImage;
+layout(binding = 3) uniform Setting {
+    int dirty;
+    int sampleCounter;
+} setting;
 
 void main()
 {
-    vec4 res = imageLoad(traceImage, ivec2(gl_GlobalInvocationID.xy));
-    imageStore(accumImage, ivec2(gl_GlobalInvocationID.xy), res);
+    vec4 accum = imageLoad(accumImage, ivec2(gl_GlobalInvocationID.xy));
+    vec4 trace = imageLoad(traceImage, ivec2(gl_GlobalInvocationID.xy));
+    if(setting.dirty == 1)
+    {
+        accum = vec4(0.0);
+    }
+    accum = accum + trace;
+    imageStore(accumImage, ivec2(gl_GlobalInvocationID.xy), accum);
+
+    vec4 color = accum / float(setting.sampleCounter);
+    imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), color);
 }

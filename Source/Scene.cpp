@@ -95,7 +95,13 @@ namespace star {
 
         for (int i = 0; i < mMeshInstances.size(); ++i)
         {
-            mTransforms.push_back({mMeshInstances[i].transform});
+            Mesh* mesh = mMeshInstances[i].mesh;
+            SceneObject sceneObject;
+            sceneObject.transform = mMeshInstances[i].transform;
+            sceneObject.albedo = mesh->mAlbedo;
+            sceneObject.emission = mesh->mEmission;
+            sceneObject.matParams = glm::vec4(mesh->mMetallic, mesh->mRoughness, 0.0f, 0.0f);
+            mSceneObjects.push_back(sceneObject);
         }
 
         int verticesCount = 0;

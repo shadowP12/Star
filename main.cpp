@@ -5,6 +5,9 @@ int main() {
     star::Importer importer;
     star::ImportedResult importedResult = importer.load("./Resources/Scenes/CornellBox.gltf");
     star::Scene* scene = new star::Scene;
+    {
+        // add light
+    }
     for (int i = 0; i < importedResult.meshs.size(); ++i)
     {
         scene->addMesh(importedResult.meshs[i]);

@@ -18,8 +18,11 @@ namespace star {
         alignas(4) int padding;
     };
 
-    struct Transform {
+    struct SceneObject {
         alignas(16) glm::mat4 transform;
+        alignas(16) glm::vec3 albedo;
+        alignas(16) glm::vec3 emission;
+        alignas(16) glm::vec4 matParams;
     };
 
     class Mesh
@@ -35,6 +38,10 @@ namespace star {
         std::vector<glm::vec3> mVertices;
         std::vector<glm::vec3> mNormals;
         std::vector<glm::vec2> mUVs;
+        glm::vec3 mAlbedo;
+        glm::vec3 mEmission;
+        float mMetallic;
+        float mRoughness;
     };
 
     struct MeshInstance
@@ -64,7 +71,7 @@ namespace star {
         std::vector<MeshInstance> mMeshInstances;
         std::vector<Index> mIndices;
         std::vector<Vertex> mVertices;
-        std::vector<Transform> mTransforms;
+        std::vector<SceneObject> mSceneObjects;
     };
 }
 
