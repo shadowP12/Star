@@ -27,6 +27,7 @@ namespace star {
         alignas(16) glm::vec4 screenParam;
         alignas(4) int sceneBvhRootIndex;
         alignas(4) int sampleCounter;
+        alignas(4) int numLight;
     };
 
     struct AccumSetting
@@ -89,6 +90,7 @@ namespace star {
         RHIBuffer* mSceneObjectBuffer = nullptr;
         RHIBuffer* mSceneIndexBuffer = nullptr;
         RHIBuffer* mSceneVertexBuffer = nullptr;
+        RHIBuffer* mSceneLightBuffer = nullptr;
         RHITexture* mTraceTexture = nullptr;
         RHITexture* mAccumTexture = nullptr;
         RHITexture* mOutputTexture = nullptr;

@@ -25,6 +25,16 @@ namespace star {
         alignas(16) glm::vec4 matParams;
     };
 
+    struct Light {
+        alignas(16) glm::vec3 position;
+        alignas(16) glm::vec3 emission;
+        alignas(16) glm::vec3 u;
+        alignas(16) glm::vec3 v;
+        alignas(4) float radius;
+        alignas(4) float area;
+        alignas(4) int type;
+    };
+
     class Mesh
     {
     public:
@@ -58,6 +68,7 @@ namespace star {
         ~Scene();
         void addMesh(Mesh* mesh);
         void addMeshInstance(const MeshInstance& instance);
+        void addLight(const Light& light);
         void createAccelerationStructures();
     private:
         int findMesh(Mesh* mesh);
@@ -72,6 +83,7 @@ namespace star {
         std::vector<Index> mIndices;
         std::vector<Vertex> mVertices;
         std::vector<SceneObject> mSceneObjects;
+        std::vector<Light> mLights;
     };
 }
 

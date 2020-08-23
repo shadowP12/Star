@@ -74,6 +74,11 @@ namespace star {
         }
     }
 
+    void Scene::addLight(const Light &light)
+    {
+        mLights.push_back(light);
+    }
+
     void Scene::createAccelerationStructures()
     {
         createBLAS();
