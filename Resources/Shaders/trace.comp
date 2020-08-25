@@ -282,8 +282,8 @@ Ray genCameraRay()
     float fov = 45.0 * 3.1415926 / 180.0;
     float angle = tan(0.5 * fov);
 
-    float x = float(gl_GlobalInvocationID.x)+ rand() - 0.5f;
-    float y = float(gl_GlobalInvocationID.y)+ rand() - 0.5f;
+    float x = float(gl_GlobalInvocationID.x) + rand() - 0.5f;
+    float y = float(gl_GlobalInvocationID.y) + rand() - 0.5f;
 
     x = (2.0f * ((x + 0.5f) * invWidth) - 1) * angle * aspectratio;
     y = (1.0f - 2.0f * ((y + 0.5f) * invHeight)) * angle;
@@ -605,7 +605,8 @@ vec3 directLight(in Ray ray, in IntersectData isect)
             float bsdfPdf = microfacetPdf(ray, lightDir, isect);
             vec3 f = microfacetEval(ray, lightDir, isect);
             float lightPdf = lightDistSq / (light.area * abs(dot(lightSample.normal, lightDir)));
-            L += powerHeuristic(lightPdf, bsdfPdf) * f * abs(dot(isect.normal, lightDir)) * lightSample.emission / lightPdf;
+            if(lightPdf > 0)
+                L += powerHeuristic(lightPdf, bsdfPdf) * f * abs(dot(isect.normal, lightDir)) * lightSample.emission / lightPdf;
         }
     }
 

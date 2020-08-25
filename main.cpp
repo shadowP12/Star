@@ -7,20 +7,20 @@ int main() {
     star::Scene* scene = new star::Scene;
     {
         star::Light light;
-        light.type = 0;
-        light.position = glm::vec3(-0.25f, 1.9f, 0.0f);
-        light.u = glm::vec3(0.25f, 1.9f, 0.0f) - light.position;
-        light.v = glm::vec3(-0.25f, 1.9f, 0.5f) - light.position;
-        light.area = glm::length(glm::cross(light.u, light.v));
-        light.emission = glm::vec3(10, 10, 10);
-        scene->addLight(light);
-
-//        light.type = 1;
-//        light.position = glm::vec3(0.0f, 1.9f, 0.0f);
+//        light.type = 0;
+//        light.position = glm::vec3(-0.25f, 1.9f, 0.0f);
+//        light.u = glm::vec3(-0.25f, 1.9f, 0.5f) - light.position;
+//        light.v = glm::vec3(0.25f, 1.9f, 0.0f) - light.position;
+//        light.area = glm::length(glm::cross(light.u, light.v));
 //        light.emission = glm::vec3(10, 10, 10);
-//        light.radius = 0.2f;
-//        light.area = 4 * 3.1415926 * (light.radius * light.radius);
 //        scene->addLight(light);
+
+        light.type = 1;
+        light.position = glm::vec3(0.0f, 1.9f, 0.0f);
+        light.emission = glm::vec3(30, 30, 30);
+        light.radius = 0.1f;
+        light.area = 4 * 3.1415926 * (light.radius * light.radius);
+        scene->addLight(light);
     }
     for (int i = 0; i < importedResult.meshs.size(); ++i)
     {
