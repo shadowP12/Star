@@ -6,4 +6,4 @@
 * GearEngine:https://github.com/hipiPan/GearEngine
 
 # Screenshots
-![image](https://github.com/hipiPan/Star/blob/master/Screenshots/1.png)
+![image](https://github.com/hipiPan/Star/blob/dev/Screenshots/1.png)
