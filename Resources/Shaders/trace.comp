@@ -637,7 +637,7 @@ vec3 pathTrace(Ray ray)
                 radiance += lightEmission * throughput;
                 break;
             }
-            //radiance += isect.emission * 50.0 * throughput;
+            //radiance += isect.emission * throughput;
             radiance += directLight(ray, isect) * throughput;
             bsdfDir = microfacetSampler(ray, isect);
             bsdfPdf = microfacetPdf(ray, bsdfDir, isect);
