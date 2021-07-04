@@ -1,0 +1,33 @@
+#version 450
+
+layout (local_size_x = 16, local_size_y = 16) in;
+layout (binding = 0, rgba32f) uniform image2D traceImage;
+layout (binding = 1, rgba32f) uniform image2D accumImage;
+layout (binding = 2, rgba32f) uniform image2D outputImage;
+layout(binding = 3) uniform Setting {
+    int dirty;
+    int sampleCounter;
+} setting;
+
+vec4 toneMap(in vec4 c, float limit)
+{
+    float luminance = 0.3*c.x + 0.6*c.y + 0.1*c.z;
+
+    return c * 1.0 / (1.0 + luminance / limit);
+}
+
+void main()
+{
+    vec4 accum = imageLoad(accumImage, ivec2(gl_GlobalInvocationID.xy));
+    vec4 trace = imageLoad(traceImage, ivec2(gl_GlobalInvocationID.xy));
+    if(setting.dirty > 0)
+    {
+        accum = vec4(0.0);
+    }
+    accum = accum + trace;
+    imageStore(accumImage, ivec2(gl_GlobalInvocationID.xy), accum);
+
+    vec4 color = accum / float(setting.sampleCounter);
+    color = pow(toneMap(color, 1.5), vec4(1.0 / 2.2));
+    imageStore(outputImage, ivec2(gl_GlobalInvocationID.xy), color);
+}
